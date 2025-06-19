@@ -1,7 +1,7 @@
 # ◇ CODEX_IMPLEMENT: implement snapshot CLI helpers
 import pickle
 from pathlib import Path
-from herg.graph_caps import CapsuleStore
+from herg.graph_caps.store import CapsuleStore
 
 
 def save_snapshot(store: CapsuleStore, path: str) -> None:

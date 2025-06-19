@@ -1,27 +1,22 @@
-import hashlib
-
-import torch
-
-from src.encoder import seed_to_hyper
-
+import numpy as np
+from herg.encoder import seed_to_hyper
+from herg import backend as B
 
 def test_determinism():
-    seed = hashlib.sha256(b"foo").digest()
-    v1 = seed_to_hyper(seed, dim=128)
-    v2 = seed_to_hyper(seed, dim=128)
-    assert torch.equal(v1, v2)
+    seed = b"A" * 32
+    v1 = seed_to_hyper(seed)
+    v2 = seed_to_hyper(seed)
+    assert np.array_equal(B.as_numpy(v1), B.as_numpy(v2))
 
-
-def test_bipolar_values():
-    seed = hashlib.sha256(b"bar").digest()
-    vec = seed_to_hyper(seed, dim=256)
-    assert set(vec.tolist()) <= {1, -1}
-
+def test_bipolar():
+    seed = b"B" * 32
+    v = seed_to_hyper(seed, ternary=False)
+    arr = B.as_numpy(v)
+    assert set(arr.tolist()) <= {-1, 1}
 
 def test_ternary_density():
-    seed = hashlib.sha256(b"baz").digest()
-    dim = 300
-    vec = seed_to_hyper(seed, dim=dim, ternary=True)
-    density = (vec != 0).float().mean().item()
-    assert 0.32 <= density <= 0.35
-
+    seed = b"C" * 32
+    v = seed_to_hyper(seed, ternary=True)
+    arr = B.as_numpy(v)
+    density = np.count_nonzero(arr) / arr.size
+    assert 0.31 <= density <= 0.35

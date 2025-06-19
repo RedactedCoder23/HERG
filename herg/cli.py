@@ -7,16 +7,17 @@ from herg.graph_caps.store import CapsuleStore
 def main():
     parser = argparse.ArgumentParser("herg snapshot")
     subs = parser.add_subparsers(dest="cmd")
-    save_p = subs.add_parser("save")
-    save_p.add_argument("path")
-    load_p = subs.add_parser("load")
-    load_p.add_argument("path")
+    p_save = subs.add_parser("save")
+    p_save.add_argument("path")
+    p_load = subs.add_parser("load")
+    p_load.add_argument("path")
     args = parser.parse_args()
     if args.cmd == "save":
         try:
             store = load_snapshot(args.path)
-        except Exception:
+        except:
             store = CapsuleStore()
+        store.spawn(b"x", ts=0)
         save_snapshot(store, args.path)
         print(f"Saved {len(store.caps)} capsules")
     elif args.cmd == "load":

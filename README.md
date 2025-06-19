@@ -1,5 +1,9 @@
 # HERG — Hypervector Emergent Reasoning Graph
 
+A lightweight, self-evolving hyper-vector reasoning graph.
+
+**How Codex/GPT fits in →** see [`HERG_CODEx_GUIDE.md`](HERG_CODEx_GUIDE.md).
+
 Experimental engine that fuses
 * deterministic hypervector encodings,
 * persistent “capsule” nodes,

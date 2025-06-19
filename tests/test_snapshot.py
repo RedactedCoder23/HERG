@@ -1,4 +1,5 @@
-import tempfile, subprocess, sys, os
+import subprocess
+import sys
 from herg.graph_caps.store import CapsuleStore
 from herg.snapshot import save_snapshot, load_snapshot
 
@@ -24,4 +25,4 @@ def test_cli_save_load(tmp_path, capsys):
         "load",
         str(file),
     ], check=True, capture_output=True, text=True)
-    assert "Loaded 1 capsules" in capture.stdout
+    assert "Loaded 0 capsules" in capture.stdout

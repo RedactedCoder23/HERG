@@ -1,5 +1,7 @@
 # ◇ CODEX_IMPLEMENT: snapshot CLI
-import argparse, sys
+import argparse
+import sys
+
 from herg.snapshot import save_snapshot, load_snapshot
 from herg.graph_caps.store import CapsuleStore
 
@@ -15,9 +17,8 @@ def main():
     if args.cmd == "save":
         try:
             store = load_snapshot(args.path)
-        except:
+        except Exception:
             store = CapsuleStore()
-        store.spawn(b"x", ts=0)
         save_snapshot(store, args.path)
         print(f"Saved {len(store.caps)} capsules")
     elif args.cmd == "load":

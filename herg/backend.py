@@ -1,11 +1,21 @@
 """
-Light-weight backend wrapper – NumPy by default, optional Torch.
+Light-weight backend wrapper – NumPy by default, optional Torch or CuPy.
 
-Set   HERG_BACKEND=torch   in the environment to opt-in to Torch.
+Set   HERG_BACKEND=torch   or   HERG_BACKEND=cupy   to opt-in to GPU backends.
 """
 
 import os
 import numpy as np
+
+_CUPY = False
+if os.getenv("HERG_BACKEND") == "cupy":
+    try:
+        import cupy as cp  # type: ignore
+        _CUPY = True
+    except Exception:
+        cp = None
+
+IS_CUPY = _CUPY and 'cp' in globals() and cp is not None
 
 _TORCH = False
 if os.getenv("HERG_BACKEND") == "torch":
@@ -46,6 +56,9 @@ def tensor(data, dtype=np.int8, device=None):
             return data.to(device=dev, dtype=_to_torch_dtype(dtype))
         else:
             return torch.tensor(data, dtype=_to_torch_dtype(dtype), device=dev)
+    elif _CUPY:
+        arr = cp.asarray(data, dtype=dtype)
+        return arr
     else:
         return np.asarray(data, dtype=dtype)
 
@@ -57,12 +70,16 @@ def as_numpy(t):
 
         if isinstance(t, torch.Tensor):
             return t.detach().cpu().numpy()
+    if IS_CUPY and isinstance(t, cp.ndarray):
+        return cp.asnumpy(t)
     return np.asarray(t)
 
 
 def dot(a, b):
     if _TORCH and hasattr(a, "dot"):
         return float(a.float().dot(b.float()))
+    if IS_CUPY and isinstance(a, cp.ndarray):
+        return float(cp.dot(a.astype(cp.float32), b.astype(cp.float32)))
     return float(np.dot(as_numpy(a).astype(np.float32), as_numpy(b).astype(np.float32)))
 
 
@@ -77,10 +94,14 @@ def stack(seq, axis=0):
         import torch
 
         return torch.stack(seq, dim=axis)
+    if IS_CUPY and any(isinstance(v, cp.ndarray) for v in seq):
+        return cp.stack(seq, axis=axis)
     return np.stack([as_numpy(v) for v in seq], axis=axis)
 
 
 def device_of(t):
     if _TORCH and hasattr(t, "device"):
         return "cuda" if t.device.type == "cuda" else "cpu"
+    if IS_CUPY and isinstance(t, cp.ndarray):
+        return "cuda"
     return "cpu"

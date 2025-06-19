@@ -48,7 +48,10 @@ def seed_to_cupy(seed: bytes, dim: int = 6000, simulate_error: bool = False):
         sign = 0.7071 if bit else -0.7071
         signs.append(sign)
     arr = xp.asarray(signs, dtype=xp.float32)
-    noise = xp.random.normal(0.0, 0.01, size=dim, dtype=xp.float32)
+    if xp is np:
+        noise = xp.random.normal(0.0, 0.01, size=dim).astype(xp.float32)
+    else:
+        noise = xp.random.normal(0.0, 0.01, size=dim, dtype=xp.float32)
     arr = arr + noise
     arr = sinc_kernel.modulate(arr, digest)
     return B.tensor(arr, dtype=np.float32)

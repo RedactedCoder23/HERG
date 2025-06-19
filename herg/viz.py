@@ -1,5 +1,5 @@
 # ◇ CODEX_IMPLEMENT: implement herg/viz.py visualization helper
-from herg.graph_caps import CapsuleStore
+from herg.graph_caps.store import CapsuleStore
 
 
 def viz_dot(store: CapsuleStore, last_n: int = 500) -> str:

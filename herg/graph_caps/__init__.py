@@ -24,15 +24,15 @@ class Capsule:
         self.vec = B.tensor(B.as_numpy(self.vec), dtype=np.int8, device=device)
 
     def promote(self, dim: int = 6000) -> None:
-        # only promote if currently on CPU
         if B.device_of(self.vec) != "cpu":
             return
         from herg.cupy_encoder import seed_to_cupy
-        self.vec = seed_to_cupy(self.id.to_bytes(32, 'big'), dim=dim)
+        self.vec = seed_to_cupy(self.id.to_bytes(32, "big"), dim=dim)
 
     def demote(self) -> None:
         import numpy as np
-        self.vec = B.tensor(self.vec, dtype=np.int8, device="cpu")
+        from herg import backend as B
+        self.vec = B.tensor(B.as_numpy(self.vec), dtype=np.int8, device="cpu")
 
 
 class EdgeCOO:

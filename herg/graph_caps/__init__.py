@@ -1,6 +1,7 @@
 import time
 import numpy as np
 from dataclasses import dataclass, field
+from typing import Any
 from herg import backend as B
 
 EdgeId = int
@@ -11,10 +12,13 @@ Weight = int  # int16
 class Capsule:
     """Ephemeral / persistent node in the HERG capsule graph."""
     id: int
-    vec: any
+    vec: Any
     last_used: int
     edge_ids: list[EdgeId] = field(default_factory=list)
     edge_wts: list[Weight] = field(default_factory=list)
+    mean: Any | None = None
+    L: Any | None = None
+    entropy: float = 0.0
 
     def to(self, device=None):
         self.vec = B.tensor(B.as_numpy(self.vec), dtype=np.int8, device=device)
@@ -45,3 +49,4 @@ class EdgeCOO:
         self.src = [s for s, k in zip(self.src, keep) if k]
         self.dst = [d for d, k in zip(self.dst, keep) if k]
         self.wts = [w for w, k in zip(self.wts, keep) if k]
+

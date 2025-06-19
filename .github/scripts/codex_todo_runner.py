@@ -13,7 +13,6 @@ The script is run from the repo root by workflows, never manually.
 from __future__ import annotations
 import os, re, sys, subprocess, time, tempfile, pathlib, textwrap
 from typing import List, Tuple
-import openai
 
 HEADER = textwrap.dedent(
     """\
@@ -80,8 +79,8 @@ def build_prompt(blocks: List[Tuple[pathlib.Path, int, str]]) -> str:
 # ────────────────────────────────────────────────────────────────────────
 
 def apply_diff_and_pr(diff_text: str, branch_prefix: str = "codex-auto") -> None:
-    m = re.search(r"```diff\n(.*)```", diff_text, re.S)
-    body = m.group(1) if m else diff_text
+    blocks = re.findall(r"```diff\n(.*?)```", diff_text, re.S)
+    body = "\n".join(blocks) if blocks else diff_text
     with tempfile.NamedTemporaryFile("w", delete=False) as tmp:
         tmp.write(body)
         tmp_path = tmp.name
@@ -98,6 +97,7 @@ def apply_diff_and_pr(diff_text: str, branch_prefix: str = "codex-auto") -> None
 
 def main() -> None:                            #   <<< do NOT edit this body
     repo_root = pathlib.Path(__file__).resolve().parents[2]
+    import openai
     openai.api_key = os.environ["OPENAI_API_KEY"]
 
     blocks = gather_todos(repo_root)

@@ -36,7 +36,7 @@ class CapsuleStore:
     def spawn(self, seed: bytes, ts=None) -> Capsule:
         ts = ts or int(time.time())
         digest = hashlib.sha256(seed).digest()
-        cid = int.from_bytes(digest[:8], "big", signed=False)  # 64-bit key from full hash
+        cid = int.from_bytes(digest, "big", signed=False) & ((1<<64)-1)  # low 64 bits of full hash
         cap = self.caps.get(cid)
         if cap is None:
             vec = seed_to_hyper(seed, dim=self.dim, device="cpu")

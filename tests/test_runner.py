@@ -35,6 +35,9 @@ def test_build_prompt_includes_header_and_context():
 def test_apply_diff_and_pr_bad_diff(tmp_path):
     repo = tmp_path
     subprocess.run(['git', 'init'], cwd=repo, check=True, stdout=subprocess.PIPE)
+    # Configure dummy identity so git commits succeed in CI
+    subprocess.run(['git','config','user.email','herg@test'], cwd=repo, check=True)
+    subprocess.run(['git','config','user.name','HERG-CI'],   cwd=repo, check=True)
     (repo / 'foo.txt').write_text('hello')
     subprocess.run(['git', 'add', '.'], cwd=repo, check=True)
     subprocess.run(['git', 'commit', '-m', 'init'], cwd=repo, check=True, stdout=subprocess.PIPE)

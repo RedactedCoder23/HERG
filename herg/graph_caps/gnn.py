@@ -11,7 +11,7 @@ _W_CACHE = {}
 
 # cache vectorized erf for NumPy path
 import math as _math
-_np_erf = np.vectorize(_math.erf)
+_ERF = np.vectorize(_math.erf)
 
 
 def gelu(x):
@@ -19,7 +19,7 @@ def gelu(x):
         import torch
         return 0.5 * x * (1.0 + torch.erf(x / _math.sqrt(2)))
     else:
-        return 0.5 * x * (1.0 + _np_erf(x / _math.sqrt(2)))
+        return 0.5 * x * (1.0 + _ERF(x / _math.sqrt(2)))
 
 
 def gnn_step(center_vec, neigh_vecs, weights):

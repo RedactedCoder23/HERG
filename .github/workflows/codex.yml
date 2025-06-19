@@ -1,0 +1,20 @@
+name: Codex Auto-PR
+on:
+  push:
+    paths:
+      - '**/*.py'
+      - '**/*.md'
+      - '**/*.txt'
+      - '**/*.todo'
+jobs:
+  codex-pr:
+    if: contains(github.event.head_commit.message, 'TODO')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Run Codex on TODO blocks
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          python .github/scripts/codex_todo_runner.py

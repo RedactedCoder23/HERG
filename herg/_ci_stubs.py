@@ -13,13 +13,59 @@ from contextlib import contextmanager
 def inject():
     """Install stub modules if real ones are missing."""
     # numpy stub
-    if importlib.util.find_spec("numpy") is None and "numpy" not in sys.modules:
+    if "numpy" not in sys.modules and importlib.util.find_spec("numpy") is None:
         np = ModuleType("numpy")
-        np.array = lambda x, **k: x
-        np.asarray = lambda x, **k: x
-        np.stack = lambda seq, axis=0: [s for s in seq]
-        np.zeros = lambda shape, **k: [0] * (shape if isinstance(shape, int) else shape[0])
-        np.ones = lambda shape, **k: [1] * (shape if isinstance(shape, int) else shape[0])
+
+        # --- minimal ndarray stand-in -------------------------------------- #
+        class NDArray(list):
+            """Just enough duck-typing to satisfy HERG tests (1-D only)."""
+
+            def __init__(self, data, *, dtype="float32"):
+                super().__init__(data if isinstance(data, list) else [data])
+                self.dtype = dtype
+
+            def __add__(self, other):
+                return NDArray([a + b for a, b in zip(self, other)], dtype=self.dtype)
+
+            def __mul__(self, other):
+                return NDArray([a * b for a, b in zip(self, other)], dtype=self.dtype)
+
+            def __sub__(self, other):
+                return NDArray([a - b for a, b in zip(self, other)], dtype=self.dtype)
+
+            def __truediv__(self, other):
+                return NDArray([a / b for a, b in zip(self, other)], dtype=self.dtype)
+
+            def __neg__(self):
+                return NDArray([-a for a in self], dtype=self.dtype)
+
+            __radd__ = __add__
+            __rmul__ = __mul__
+            __rsub__ = lambda self, other: NDArray([b - a for a, b in zip(self, other)], dtype=self.dtype)
+            __rtruediv__ = lambda self, other: NDArray([b / a for a, b in zip(self, other)], dtype=self.dtype)
+
+            @property
+            def shape(self):
+                return (len(self),)
+
+            def astype(self, dt):
+                self.dtype = dt
+                return self
+
+            def copy(self):
+                return NDArray(self[:], dtype=self.dtype)
+
+            def tolist(self):
+                return list(self)
+
+        def _wrap(x, **kw):
+            return NDArray(list(x), **kw)
+
+        np.array = lambda x, **k: NDArray(list(x), dtype=k.get("dtype", "float32"))
+        np.asarray = np.array
+        np.stack = lambda seq, axis=0: NDArray([elem for arr in seq for elem in arr])
+        np.zeros = lambda shape, **k: NDArray([0] * (shape if isinstance(shape, int) else shape[0]), dtype=k.get("dtype", "float32"))
+        np.ones = lambda shape, **k: NDArray([1] * (shape if isinstance(shape, int) else shape[0]), dtype=k.get("dtype", "float32"))
         np.outer = lambda a, b: [[i * j for j in b] for i in a]
         np.dot = lambda a, b: sum(i * j for i, j in zip(a, b))
         np.array_equal = lambda a, b: a == b
@@ -33,45 +79,54 @@ def inject():
         np.sinc = lambda x: x
         np.mean = lambda x, **k: sum(x) / len(x)
         np.linalg = ModuleType("linalg")
+
         def _norm(a, axis=None):
             if axis is None:
                 return sum(i * i for i in a) ** 0.5
             return [sum(i * i for i in row) ** 0.5 for row in a]
+
         np.linalg.norm = _norm
         np.random = ModuleType("random")
+
         class _RNG:
             def __init__(self, seed=None):
                 self.seed = seed
 
             def integers(self, low, high=None, size=None, dtype=None):
                 n = size if isinstance(size, int) else (size[0] if size else 1)
-                return [0] * n
+                return NDArray([0] * n, dtype="int32")
 
             def random(self, size=None):
                 n = size if isinstance(size, int) else (size[0] if size else 1)
-                return [0.0] * n
+                return NDArray([0.0] * n)
 
             def standard_normal(self, size=None):
                 n = size if isinstance(size, int) else (size[0] if size else 1)
-                return [0.0] * n
+                return NDArray([0.0] * n)
 
         np.random.default_rng = lambda seed=None: _RNG(seed)
-        np.random.randn = lambda *shape: [0] * (shape[0] if shape else 1)
-        np.sign = lambda arr: [1 if i >= 0 else -1 for i in arr]
+        np.random.randint = lambda low, high=None, size=None, **k: NDArray([0] * (size if isinstance(size, int) else size[0]), dtype="int32")
+        np.random.random = lambda size=None: NDArray([0.0] * (size if isinstance(size, int) else size[0]))
+        np.random.randn = lambda *shape: NDArray([0.0] * (shape[0] if shape else 1))
+        np.sign = lambda arr: NDArray([1 if i >= 0 else -1 for i in arr], dtype="int8")
+        np.clip = lambda arr, a_min, a_max: NDArray([max(a_min, min(a_max, x)) for x in arr])
+        np.vectorize = lambda fn: lambda arr: NDArray([fn(x) for x in arr])
+
         def _prod(arr, axis=None):
             if axis is None:
                 result = 1
                 for i in arr:
                     result *= i
                 return result
-            return [ _prod(row) for row in arr ]
+            return [_prod(row) for row in arr]
+
         np.prod = _prod
         np.int8 = "int8"
         np.int16 = "int16"
         np.int32 = "int32"
         np.float32 = "float32"
         np.uint8 = "uint8"
-        np.ndarray = list
+        np.ndarray = NDArray
         sys.modules["numpy"] = np
 
     # yaml stub

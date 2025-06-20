@@ -43,3 +43,4 @@ curl -H "x-api-key: $NODE_KEY" -XPOST \
 ```
 
 Queries hit the router on port 8000 as well.
+Inserts require the `x-api-key` header and may include `{"seed":"abc", "reward":1.0}`.

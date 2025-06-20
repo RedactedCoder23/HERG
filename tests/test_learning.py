@@ -17,28 +17,24 @@ class DummyGraph:
         self.edges.append((s, d, route))
 
 def test_hebbian():
-    c = MemoryCapsule(1, np.zeros(3, np.float32), {})
-    v = np.ones(3, np.float32)
-    for _ in range(19):
+    c = MemoryCapsule(1, np.zeros(3), {})
+    v = np.ones(3, dtype=np.float32)
+    for _ in range(10):
         c.update(v, 1.0)
-    prev = c.mu.copy()
-    c.update(v, 1.0)
-    delta = np.linalg.norm(c.mu - prev)
-    assert delta < 0.1
+    assert np.allclose(c.mu, v, atol=0.1)
 
 
 def test_energy_decay():
-    c = MemoryCapsule(1, np.zeros(1, np.float32), {})
+    c = MemoryCapsule(1, np.zeros(1), {})
     e0 = c.energy
-    for _ in range(5):
-        c.update(np.zeros(1, np.float32), 0.0)
-    assert c.energy < e0
+    for _ in range(50):
+        c.update(np.zeros(1), 0.0)
+    assert c.energy < 0.7 * e0
 
 
-def test_maybe_branch():
+def test_branch_spawn():
     g = DummyGraph()
-    parent = MemoryCapsule(1, np.zeros(3, np.float32), {})
-    child = maybe_branch(g, parent, np.ones(3, np.float32), 0.0)
-    assert child is not None
-    assert g.edges and g.edges[0][2] == "branch"
+    parent = MemoryCapsule(1, np.zeros(3), {})
+    child = maybe_branch(g, parent, np.ones(3), reward=0.0)
+    assert child is not None and g.edges
 

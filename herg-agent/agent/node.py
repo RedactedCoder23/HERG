@@ -29,8 +29,7 @@ M = 64                     # PQ code size
 NODE_KEY = os.getenv("NODE_KEY")
 app = FastAPI()
 hvlog = HVLogFS(str(HVLOG_DIR))
-index = faiss.index_factory(DIM, f"IVF{NLIST},PQ{M}x8")   # 8-bit subquantiser
-index.nprobe = 12
+index = faiss.IndexIDMap(faiss.IndexFlatL2(DIM))
 id_map = {}         # capsule_id -> (chunk_offset, meta_dict)
 
 # ---------------------------------------------------------------------------
@@ -74,7 +73,8 @@ async def _rebuild_periodic():
 # ---------------------------------------------------------------------------
 
 @app.post("/query")
-async def query(req: bytes):
+async def query(request: Request):
+    req = await request.body()
     """
     Body = b"{prefix_hex}{json_payload}"
     json = { "seed": str, "top_k": int }
@@ -93,11 +93,12 @@ async def query(req: bytes):
         if cid == -1:
             continue
         chunk, meta = id_map.get(cid, (None, None))
-        results.append({"capsule": cid, "dist": float(dist), "meta": meta})
+        results.append({"capsule": int(cid), "dist": float(dist), "meta": meta})
     return results
 
 @app.post("/insert")
-async def insert(req: bytes):
+async def insert(request: Request):
+    req = await request.body()
     """
     Body = b"{prefix_hex}{json}"
     json = { "seed": str, "text": str, "reward": float }
@@ -108,11 +109,13 @@ async def insert(req: bytes):
         raise HTTPException(400, "wrong shard")
     data = orjson.loads(body[2:])
     vec, h = encode(data["seed"])
-    cap_id = h                          # use full 128-bit as int
+    cap_id = h
     meta = {"text": data["text"], "energy": data["reward"], "ts": time.time()}
     hvlog.append_cap(prefix=pref, cap_id=cap_id, mu=vec, meta=meta)
-    index.add_with_ids(vec.astype(np.float32)[None, :], np.array([cap_id]))
-    id_map[cap_id] = ("current_chunk", meta)
+    if not index.is_trained:
+        index.train(vec.astype(np.float32)[None, :])
+    index.add_with_ids(vec.astype(np.float32)[None, :], np.array([cap_id], dtype=np.int64))
+    id_map[int(cap_id)] = ("current_chunk", meta)
     return {"ok": True}
 
 # ---------------------------------------------------------------------------

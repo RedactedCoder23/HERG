@@ -12,3 +12,20 @@ verified before returning the bytes as a NumPy array.
 
 A tiny write‑ahead journal provides crash safety and is replayed by higher
 levels in real deployments.
+
+## Usage
+
+```python
+from herg.storage.hvlogfs import HyperChunk
+chunk = HyperChunk('vec.chk')
+offsets = chunk.append([b'\0'*1024]*10)
+vec = chunk.read(offsets[0])
+```
+
+Chunk layout (4 MiB example):
+
+```
++-------64B------+---------------------- data -----------------------+
+| header        | vector0 | crc | vector1 | crc | ...               |
++---------------+----------------------------------------------- ...+
+```

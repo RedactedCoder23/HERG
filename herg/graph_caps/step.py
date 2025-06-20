@@ -2,6 +2,7 @@ from collections import deque
 import numpy as np
 from herg import backend as B
 from .capsule import Capsule
+from .blocks import bind_block, BLOCK_SIZE
 
 
 def adf_update(capsule: Capsule, incoming_fast, sign: float, eta: float) -> None:
@@ -43,7 +44,10 @@ def k_radius_pass(store, radius: int) -> None:
                 if ncap is None:
                     continue
                 weight = 1.0 / (dist + 1)
-                agg.append(ncap.fast)
+                Bc = B.as_numpy(cap.fast).shape[0] // BLOCK_SIZE
+                block = (dist + 1) % Bc
+                bound = bind_block(block, ncap.fast)
+                agg.append(bound)
                 wts.append(weight)
         if agg:
             stack = B.stack(agg, axis=0)

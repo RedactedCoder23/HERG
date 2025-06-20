@@ -9,12 +9,11 @@ from pathlib import Path
 import numpy as np
 import faiss, orjson, uvicorn
 from fastapi import FastAPI, HTTPException, Request
-from agent.utils import safe_search
+from agent.utils import safe_search, cosine
 from herg.faiss_wrapper import make_index
 from herg.hvlogfs import HVLogFS          # assuming you expose this
 from agent.encoder_ext import encode, prefix
 from agent.memory import MemoryCapsule, SelfCapsule, maybe_branch
-from herg.backend import cosine
 if os.getenv("S3_BUCKET"):
     from agent.replicator import push_closed_chunks, hydrate_prefix
 else:  # disable S3 sync in dev without credentials
@@ -35,13 +34,13 @@ DIM = 2048
 NLIST = 4096               # IVF coarse bins
 M = 64                     # PQ code size
 
-NODE_KEY = os.getenv("NODE_KEY")
+API_KEY = os.getenv("NODE_KEY")
 app = FastAPI()
 hvlog = HVLogFS(str(HVLOG_DIR))
 index = faiss.IndexIDMap(make_index(DIM))
 id_map = {}         # capsule_id -> (chunk_offset, meta_dict, mu)
 
-SIM_THR = 0.9
+SIM_THR = 0.88
 
 
 class _Graph:
@@ -59,10 +58,10 @@ class _Graph:
 self_cap = SelfCapsule()
 graph = _Graph()
 
-
-def _check_key(request: Request) -> None:
-    if NODE_KEY and request.headers.get("x-api-key") != NODE_KEY:
-        raise HTTPException(status_code=401, detail="unauthorized")
+def _auth(request: Request) -> None:
+    """Check API key header if API_KEY is set."""
+    if API_KEY and request.headers.get("x-api-key") != API_KEY:
+        raise HTTPException(status_code=401, detail="unauth")
 
 # ---------------------------------------------------------------------------
 
@@ -107,7 +106,7 @@ async def _rebuild_periodic():
 
 @app.post("/query")
 async def query(request: Request):
-    _check_key(request)
+    _auth(request)
     req = await request.body()
     """
     Body = b"{prefix_hex}{json_payload}"
@@ -132,7 +131,7 @@ async def query(request: Request):
 
 @app.post("/insert")
 async def insert(request: Request):
-    _check_key(request)
+    _auth(request)
     req = await request.body()
     """
     Body = b"{prefix_hex}{json}"

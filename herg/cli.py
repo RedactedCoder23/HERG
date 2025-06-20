@@ -46,7 +46,9 @@ def main() -> None:
     p_auto.add_argument('--radius', type=int, default=cfg.radius)
     p_auto.add_argument('--tune-interval', type=int, default=30)
     p_auto.add_argument('--goal', default='retention', choices=['throughput','retention','latency'])
-    p_auto.add_argument('--tuner', default=cfg.tuner, choices=['hill','cma','bandit'])
+    p_auto.add_argument('--tuner', default=cfg.tuner,
+                        choices=['hill','cma','bandit'],
+                        help='select parameter tuner ("hill" legacy, default bandit)')
     p_auto.add_argument('--profile', action='store_true')
 
     p_save = sub.add_parser('save')

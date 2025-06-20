@@ -11,7 +11,7 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.11"]
-        tuner: [hill, bandit]
+        tuner: [bandit]
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python

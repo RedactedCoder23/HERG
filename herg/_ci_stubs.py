@@ -24,25 +24,53 @@ def inject():
                 super().__init__(data if isinstance(data, list) else [data])
                 self.dtype = dtype
 
+            def _it(self, other):
+                if isinstance(other, NDArray):
+                    return other
+                if isinstance(other, list):
+                    return other
+                return [other] * len(self)
+
             def __add__(self, other):
-                return NDArray([a + b for a, b in zip(self, other)], dtype=self.dtype)
+                o = self._it(other)
+                return NDArray([a + b for a, b in zip(self, o)], dtype=self.dtype)
 
             def __mul__(self, other):
-                return NDArray([a * b for a, b in zip(self, other)], dtype=self.dtype)
+                o = self._it(other)
+                return NDArray([a * b for a, b in zip(self, o)], dtype=self.dtype)
 
             def __sub__(self, other):
-                return NDArray([a - b for a, b in zip(self, other)], dtype=self.dtype)
+                o = self._it(other)
+                return NDArray([a - b for a, b in zip(self, o)], dtype=self.dtype)
 
             def __truediv__(self, other):
-                return NDArray([a / b for a, b in zip(self, other)], dtype=self.dtype)
+                o = self._it(other)
+                return NDArray([a / b for a, b in zip(self, o)], dtype=self.dtype)
 
             def __neg__(self):
                 return NDArray([-a for a in self], dtype=self.dtype)
 
-            __radd__ = __add__
-            __rmul__ = __mul__
-            __rsub__ = lambda self, other: NDArray([b - a for a, b in zip(self, other)], dtype=self.dtype)
-            __rtruediv__ = lambda self, other: NDArray([b / a for a, b in zip(self, other)], dtype=self.dtype)
+            @property
+            def size(self):
+                return len(self)
+
+            def reshape(self, *shape):
+                return NDArray(self[:], dtype=self.dtype)
+
+            def tobytes(self):
+                return bytes(int(x) & 0xFF for x in self)
+
+            def __radd__(self, other):
+                return NDArray([b + a for a, b in zip(self, self._it(other))], dtype=self.dtype)
+
+            def __rmul__(self, other):
+                return NDArray([b * a for a, b in zip(self, self._it(other))], dtype=self.dtype)
+
+            def __rsub__(self, other):
+                return NDArray([b - a for a, b in zip(self, self._it(other))], dtype=self.dtype)
+
+            def __rtruediv__(self, other):
+                return NDArray([b / a for a, b in zip(self, self._it(other))], dtype=self.dtype)
 
             @property
             def shape(self):
@@ -58,14 +86,23 @@ def inject():
             def tolist(self):
                 return list(self)
 
-        def _wrap(x, **kw):
-            return NDArray(list(x), **kw)
+        NDArray.__qualname__ = "NDArray"
+        NDArray.__module__ = __name__
 
-        np.array = lambda x, **k: NDArray(list(x), dtype=k.get("dtype", "float32"))
+        def _wrap(x, **kw):
+            return NDArray(list(x) if isinstance(x, (list, tuple, NDArray)) else [x], **kw)
+
+        np.array = lambda x, **k: _wrap(x, dtype=k.get("dtype", "float32"))
         np.asarray = np.array
         np.stack = lambda seq, axis=0: NDArray([elem for arr in seq for elem in arr])
         np.zeros = lambda shape, **k: NDArray([0] * (shape if isinstance(shape, int) else shape[0]), dtype=k.get("dtype", "float32"))
         np.ones = lambda shape, **k: NDArray([1] * (shape if isinstance(shape, int) else shape[0]), dtype=k.get("dtype", "float32"))
+        np.int8 = "int8"
+        np.int16 = "int16"
+        np.int32 = "int32"
+        np.float32 = "float32"
+        np.uint8 = "uint8"
+        np.frombuffer = lambda buf, dtype="uint8", count=-1, offset=0: NDArray(list(buf[offset:len(buf) if count==-1 else offset+count]), dtype=str(dtype))
         np.outer = lambda a, b: [[i * j for j in b] for i in a]
         np.dot = lambda a, b: sum(i * j for i, j in zip(a, b))
         np.array_equal = lambda a, b: a == b
@@ -108,9 +145,10 @@ def inject():
         np.random.randint = lambda low, high=None, size=None, **k: NDArray([0] * (size if isinstance(size, int) else size[0]), dtype="int32")
         np.random.random = lambda size=None: NDArray([0.0] * (size if isinstance(size, int) else size[0]))
         np.random.randn = lambda *shape: NDArray([0.0] * (shape[0] if shape else 1))
-        np.sign = lambda arr: NDArray([1 if i >= 0 else -1 for i in arr], dtype="int8")
-        np.clip = lambda arr, a_min, a_max: NDArray([max(a_min, min(a_max, x)) for x in arr])
-        np.vectorize = lambda fn: lambda arr: NDArray([fn(x) for x in arr])
+        np.random.normal = lambda loc=0.0, scale=1.0, size=None: NDArray([loc] * (size if isinstance(size, int) else (size[0] if size else 1)))
+        np.sign = lambda arr: NDArray([1 if i >= 0 else -1 for i in (arr if isinstance(arr, (list, NDArray)) else [arr])], dtype="int8")
+        np.clip = lambda arr, a_min, a_max: NDArray([max(a_min, min(a_max, x)) for x in (arr if isinstance(arr, (list, NDArray)) else [arr])])
+        np.vectorize = lambda fn: lambda arr: NDArray([fn(x) for x in (arr if isinstance(arr, (list, NDArray)) else [arr])])
 
         def _prod(arr, axis=None):
             if axis is None:
@@ -121,19 +159,27 @@ def inject():
             return [_prod(row) for row in arr]
 
         np.prod = _prod
-        np.int8 = "int8"
-        np.int16 = "int16"
-        np.int32 = "int32"
-        np.float32 = "float32"
-        np.uint8 = "uint8"
         np.ndarray = NDArray
         sys.modules["numpy"] = np
 
     # yaml stub
     if importlib.util.find_spec("yaml") is None and "yaml" not in sys.modules:
         yaml = ModuleType("yaml")
-        yaml.safe_load = lambda s: {}
-        yaml.safe_dump = lambda d, **k: ""
+        def _load_yaml(s):
+            data = {}
+            for line in s.splitlines():
+                if ":" not in line:
+                    continue
+                k, v = line.split(":", 1)
+                v = v.strip()
+                if v.isdigit():
+                    v = int(v)
+                data[k.strip()] = v
+            return data
+        yaml.safe_load = _load_yaml
+        yaml.safe_dump = lambda d, **k: "\n".join(f"{k}: {v}" for k, v in d.items())
+        yaml.load = lambda s, **k: yaml.safe_load(s)
+        yaml.dump = lambda d, **k: yaml.safe_dump(d, **k)
         sys.modules["yaml"] = yaml
 
     # torch stub
@@ -188,7 +234,7 @@ def inject():
                 return cls._inst
 
             def register_magics(self, cls_):
-                self._magics = cls_(shell=self)
+                self._magics = cls_()
 
             def run_line_magic(self, name, line):
                 m = getattr(self._magics, name)

@@ -3,7 +3,7 @@
 HERG ships with a tiny auto-tuning daemon that adjusts runtime parameters
 while the simulator runs.  It watches ingest throughput, query latency and
 retention accuracy via `MetricStore`.  Every few seconds the daemon asks a
-`HillClimbTuner` for parameter updates and applies them live to `Config`.
+`BanditTuner` for parameter updates and applies them live to `Config`.
 
 ## Config keys
 - `radius` – message propagation radius
@@ -21,4 +21,5 @@ You can visualise the metrics with `scripts/plot_autotune.py autotune.log`.
 
 `BanditTuner` implements a simple \u03b5-greedy algorithm that explores
 parameter tweaks at random early on then gradually exploits the best known
-updates.  Select it with `--tuner bandit` on the CLI.
+updates.  It is now the default tuner (use `--tuner hill` to enable the
+legacy heuristic).

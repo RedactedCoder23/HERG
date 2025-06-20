@@ -16,3 +16,4 @@ Flags:
 - `--backend`         hvlogfs backend (dax/spdk/stub)
 - `--scrub-interval`  scrubber interval seconds
 - `--gossip-every`    gossip tick interval
+- `--tuner`           which auto-tuner to use (`bandit` default, `hill` legacy)

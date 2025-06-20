@@ -9,9 +9,11 @@ from pathlib import Path
 import numpy as np
 import faiss, orjson, uvicorn
 from fastapi import FastAPI, HTTPException, Request
-from herg.faiss_wrapper import safe_search
+from agent.utils import safe_search
 from herg.hvlogfs import HVLogFS          # assuming you expose this
 from agent.encoder_ext import encode, prefix
+from agent.memory import MemoryCapsule, SelfCapsule, maybe_branch
+from herg.backend import cosine
 if os.getenv("S3_BUCKET"):
     from agent.replicator import push_closed_chunks, hydrate_prefix
 else:  # disable S3 sync in dev without credentials
@@ -36,7 +38,25 @@ NODE_KEY = os.getenv("NODE_KEY")
 app = FastAPI()
 hvlog = HVLogFS(str(HVLOG_DIR))
 index = faiss.IndexIDMap(faiss.IndexFlatL2(DIM))
-id_map = {}         # capsule_id -> (chunk_offset, meta_dict)
+id_map = {}         # capsule_id -> (chunk_offset, meta_dict, mu)
+
+SIM_THR = 0.9
+
+
+class _Graph:
+    def __init__(self):
+        self.nodes = {}
+        self.edges = []
+
+    def add(self, cap):
+        self.nodes[cap.id_int] = cap
+
+    def add_edge(self, src, dst, route=""):
+        self.edges.append((src, dst, route))
+
+
+self_cap = SelfCapsule()
+graph = _Graph()
 
 
 def _check_key(request: Request) -> None:
@@ -62,7 +82,7 @@ async def _rebuild():
             continue
         vecs.append(cap.mu.astype(np.float32))
         ids.append(cap.id_int)
-        id_map[cap.id_int] = (cap.chunk, cap.meta)
+        id_map[cap.id_int] = (cap.chunk, cap.meta, cap.mu.astype(np.float32))
     if vecs:
         xb = np.stack(vecs)
         index.add_with_ids(faiss.vector_to_array(xb).reshape(-1, DIM), np.array(ids))
@@ -113,12 +133,35 @@ async def insert(request: Request):
     if pref != SHARD_KEY:
         raise HTTPException(400, "wrong shard")
     data = orjson.loads(body[2:])
+    reward = float(data.get("reward", 0.0))
     vec, h = encode(data["seed"])
-    cap_id = h
-    meta = {"text": data["text"], "energy": data["reward"], "ts": time.time()}
-    hvlog.append_cap(prefix=pref, cap_id=cap_id, mu=vec, meta=meta)
-    index.add_with_ids(vec.astype(np.float32)[None, :], np.array([cap_id], dtype=np.int64))
-    id_map[int(cap_id)] = ("current_chunk", meta)
+
+    # look up nearest capsule
+    D, I = safe_search(index, vec.astype(np.float32)[None, :], 1)
+    cap = None
+    if I.size and I[0][0] != -1:
+        cid = int(I[0][0])
+        chunk, meta, mu = id_map[cid]
+        cap = MemoryCapsule(cid, mu.copy(), meta, meta.get("energy", 1.0))
+        if cosine(vec, cap.mu) > SIM_THR:
+            cap.update(vec, reward)
+            hvlog.append_cap(prefix=pref, cap_id=cid, mu=cap.mu, meta=cap.meta)
+            index.remove_ids(np.array([cid], dtype=np.int64))
+            index.add_with_ids(cap.mu.astype(np.float32)[None, :], np.array([cid], dtype=np.int64))
+            id_map[cid] = ("current_chunk", cap.meta, cap.mu.copy())
+        else:
+            cap = None
+
+    if cap is None:
+        cap_id = h
+        meta = {"text": data.get("text", ""), "energy": reward, "ts": time.time()}
+        hvlog.append_cap(prefix=pref, cap_id=cap_id, mu=vec, meta=meta)
+        index.add_with_ids(vec.astype(np.float32)[None, :], np.array([cap_id], dtype=np.int64))
+        id_map[int(cap_id)] = ("current_chunk", meta, vec.astype(np.float32))
+        cap = MemoryCapsule(cap_id, vec.copy(), meta)
+
+    maybe_branch(graph, cap, vec, reward)
+    self_cap.bump(reward, 0.0)
     return {"ok": True}
 
 # ---------------------------------------------------------------------------

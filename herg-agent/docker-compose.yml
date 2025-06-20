@@ -1,0 +1,24 @@
+version: "3.8"
+services:
+  node_a:
+    build: .
+    environment:
+      SHARD_KEY: "00"
+    volumes:
+      - hv_a:/data
+  node_b:
+    build: .
+    environment:
+      SHARD_KEY: "80"
+    volumes:
+      - hv_b:/data
+  router:
+    build: .
+    command: python -m agent.router
+    environment:
+      SHARD_MAP: "00-7f=http://node_a:9000,80-ff=http://node_b:9000"
+    ports:
+      - "8000:8000"
+volumes:
+  hv_a: {}
+  hv_b: {}

@@ -1,0 +1,8 @@
+app = "herg-node"
+[experimental]
+  auto_rollback = true
+[env]
+  SHARD_KEY = "00"
+[mounts]
+  source = "vol_data"
+  destination = "/data"

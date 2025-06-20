@@ -1,0 +1,8 @@
+app = "herg-node-aa"
+[env]
+SHARD_KEY = "aa"
+NODE_KEY = "changeme"
+S3_BUCKET = "herg-brain"
+[mounts]
+source="vol_data"
+destination="/data"

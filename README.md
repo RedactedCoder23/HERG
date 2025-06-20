@@ -23,3 +23,23 @@ See `DOCS/capsule_graph.md` for the design spec.
 | CuPy    | GPU    | `HERG_BACKEND=cupy` |
 
 Enable GPU by exporting the desired `HERG_BACKEND` before running. Capsule updates follow the BHRE low-rank ADF math.
+
+## Quick-Start
+
+Spin up a demo node and router then insert a capsule:
+
+```bash
+export NODE_KEY=$(openssl rand -hex 16)
+python -m agent.node &
+python -m agent.router &
+payload=$(python -m agent.utils prefix '{"seed":"hi","text":"hello","reward":0.1}')
+curl -H "x-api-key: $NODE_KEY" -XPOST \
+  -d "$payload" \
+  http://localhost:8000/insert
+payload=$(python -m agent.utils prefix '{"seed":"hi","top_k":1}')
+curl -H "x-api-key: $NODE_KEY" -XPOST \
+  -d "$payload" \
+  http://localhost:8000/query
+```
+
+Queries hit the router on port 8000 as well.

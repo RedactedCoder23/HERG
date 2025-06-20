@@ -6,14 +6,20 @@ One shard:  • query / update API
 
 import asyncio, os, time, logging
 from pathlib import Path
-from typing import List
 import numpy as np
 import faiss, orjson, uvicorn
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import JSONResponse
+from herg.faiss_wrapper import safe_search
 from herg.hvlogfs import HVLogFS          # assuming you expose this
 from agent.encoder_ext import encode, prefix
-from agent.replicator import push_closed_chunks, hydrate_prefix
+if os.getenv("S3_BUCKET"):
+    from agent.replicator import push_closed_chunks, hydrate_prefix
+else:  # disable S3 sync in dev without credentials
+    async def push_closed_chunks():
+        pass
+
+    async def hydrate_prefix(_):
+        pass
 
 log = logging.getLogger("node")
 
@@ -32,18 +38,16 @@ hvlog = HVLogFS(str(HVLOG_DIR))
 index = faiss.IndexIDMap(faiss.IndexFlatL2(DIM))
 id_map = {}         # capsule_id -> (chunk_offset, meta_dict)
 
+
+def _check_key(request: Request) -> None:
+    if NODE_KEY and request.headers.get("x-api-key") != NODE_KEY:
+        raise HTTPException(status_code=401, detail="unauthorized")
+
 # ---------------------------------------------------------------------------
 
-@app.get("/health")
+@app.get("/health", tags=["_infra"])
 async def health():
     return {"ok": True}
-
-@app.middleware("http")
-async def _auth(request: Request, call_next):
-    if NODE_KEY and request.headers.get("X-API-KEY") != NODE_KEY:
-        return JSONResponse({"detail": "unauthorized"}, status_code=401)
-    return await call_next(request)
-
 
 @app.on_event("startup")
 async def _load():
@@ -61,7 +65,6 @@ async def _rebuild():
         id_map[cap.id_int] = (cap.chunk, cap.meta)
     if vecs:
         xb = np.stack(vecs)
-        index.train(xb)
         index.add_with_ids(faiss.vector_to_array(xb).reshape(-1, DIM), np.array(ids))
     log.info("Indexed %d vectors", len(vecs))
 
@@ -74,6 +77,7 @@ async def _rebuild_periodic():
 
 @app.post("/query")
 async def query(request: Request):
+    _check_key(request)
     req = await request.body()
     """
     Body = b"{prefix_hex}{json_payload}"
@@ -85,9 +89,9 @@ async def query(request: Request):
         raise HTTPException(400, "wrong shard")
     data = orjson.loads(body[2:])
     vec, _ = encode(data["seed"])
-    if index.ntotal == 0:
+    D, I = safe_search(index, vec.astype(np.float32)[None, :], data.get("top_k", 8))
+    if I.size == 0:
         return []
-    D, I = index.search(vec.astype(np.float32)[None, :], data.get("top_k", 8))
     results = []
     for dist, cid in zip(D[0], I[0]):
         if cid == -1:
@@ -98,6 +102,7 @@ async def query(request: Request):
 
 @app.post("/insert")
 async def insert(request: Request):
+    _check_key(request)
     req = await request.body()
     """
     Body = b"{prefix_hex}{json}"
@@ -112,8 +117,6 @@ async def insert(request: Request):
     cap_id = h
     meta = {"text": data["text"], "energy": data["reward"], "ts": time.time()}
     hvlog.append_cap(prefix=pref, cap_id=cap_id, mu=vec, meta=meta)
-    if not index.is_trained:
-        index.train(vec.astype(np.float32)[None, :])
     index.add_with_ids(vec.astype(np.float32)[None, :], np.array([cap_id], dtype=np.int64))
     id_map[int(cap_id)] = ("current_chunk", meta)
     return {"ok": True}

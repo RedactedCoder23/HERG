@@ -26,7 +26,7 @@ def _pick(prefix: str) -> str:
             return url
     raise HTTPException(500, "no shard for prefix")
 
-@app.api_route("/{path:path}", methods=["POST"])
+@app.api_route("/{path:path}", methods=["GET", "POST"])
 async def redirect(path: str, req: Request):
     body = await req.body()
     prefix = body[:2].decode()       # client must prepend shard-prefix ascii

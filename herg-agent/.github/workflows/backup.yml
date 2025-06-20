@@ -1,0 +1,15 @@
+name: weekly-backup
+on:
+  schedule: [ cron:  '0 17 * * SUN' ]
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: appleboy/ssh-action@v1
+        with:
+          host:   ${{ secrets.VM_IP }}
+          username: backup
+          key:   ${{ secrets.VM_SSH_KEY }}
+          script: |
+            tar czf /tmp/hvlog_$(date +%F).tgz /data
+            aws s3 cp /tmp/hvlog_*.tgz s3://herg-backups/

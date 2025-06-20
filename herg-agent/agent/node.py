@@ -1,0 +1,132 @@
+"""
+One shard:  • query / update API
+            • local Faiss IVF+PQ index
+            • background tasks: push_closed_chunks, hydrate_prefix
+"""
+
+import asyncio, os, time, logging
+from pathlib import Path
+from typing import List
+import numpy as np
+import faiss, orjson, uvicorn
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
+from herg.hvlogfs import HVLogFS          # assuming you expose this
+from agent.encoder_ext import encode, prefix
+from agent.replicator import push_closed_chunks, hydrate_prefix
+
+log = logging.getLogger("node")
+
+HVLOG_DIR = Path(os.getenv("HVLOG_DIR", "/data/hvlog"))
+SHARD_KEY  = os.getenv("SHARD_KEY")       # e.g. "7a"
+if SHARD_KEY is None:
+    raise SystemExit("must set SHARD_KEY env")
+
+DIM = 2048
+NLIST = 4096               # IVF coarse bins
+M = 64                     # PQ code size
+
+NODE_KEY = os.getenv("NODE_KEY")
+app = FastAPI()
+hvlog = HVLogFS(str(HVLOG_DIR))
+index = faiss.index_factory(DIM, f"IVF{NLIST},PQ{M}x8")   # 8-bit subquantiser
+index.nprobe = 12
+id_map = {}         # capsule_id -> (chunk_offset, meta_dict)
+
+# ---------------------------------------------------------------------------
+
+@app.get("/health")
+async def health():
+    return {"ok": True}
+
+@app.middleware("http")
+async def _auth(request: Request, call_next):
+    if NODE_KEY and request.headers.get("X-API-KEY") != NODE_KEY:
+        return JSONResponse({"detail": "unauthorized"}, status_code=401)
+    return await call_next(request)
+
+
+@app.on_event("startup")
+async def _load():
+    asyncio.create_task(hydrate_prefix(SHARD_KEY))
+    await _rebuild()
+    asyncio.create_task(_rebuild_periodic())
+
+async def _rebuild():
+    vecs, ids = [], []
+    for cap in hvlog.iter_capsules(prefix=SHARD_KEY):
+        if not getattr(cap, "active", True):
+            continue
+        vecs.append(cap.mu.astype(np.float32))
+        ids.append(cap.id_int)
+        id_map[cap.id_int] = (cap.chunk, cap.meta)
+    if vecs:
+        xb = np.stack(vecs)
+        index.train(xb)
+        index.add_with_ids(faiss.vector_to_array(xb).reshape(-1, DIM), np.array(ids))
+    log.info("Indexed %d vectors", len(vecs))
+
+async def _rebuild_periodic():
+    while True:
+        await asyncio.sleep(300)
+        await _rebuild()
+
+# ---------------------------------------------------------------------------
+
+@app.post("/query")
+async def query(req: bytes):
+    """
+    Body = b"{prefix_hex}{json_payload}"
+    json = { "seed": str, "top_k": int }
+    """
+    body = req.decode()
+    pref = body[:2]
+    if pref != SHARD_KEY:
+        raise HTTPException(400, "wrong shard")
+    data = orjson.loads(body[2:])
+    vec, _ = encode(data["seed"])
+    if index.ntotal == 0:
+        return []
+    D, I = index.search(vec.astype(np.float32)[None, :], data.get("top_k", 8))
+    results = []
+    for dist, cid in zip(D[0], I[0]):
+        if cid == -1:
+            continue
+        chunk, meta = id_map.get(cid, (None, None))
+        results.append({"capsule": cid, "dist": float(dist), "meta": meta})
+    return results
+
+@app.post("/insert")
+async def insert(req: bytes):
+    """
+    Body = b"{prefix_hex}{json}"
+    json = { "seed": str, "text": str, "reward": float }
+    """
+    body = req.decode()
+    pref = body[:2]
+    if pref != SHARD_KEY:
+        raise HTTPException(400, "wrong shard")
+    data = orjson.loads(body[2:])
+    vec, h = encode(data["seed"])
+    cap_id = h                          # use full 128-bit as int
+    meta = {"text": data["text"], "energy": data["reward"], "ts": time.time()}
+    hvlog.append_cap(prefix=pref, cap_id=cap_id, mu=vec, meta=meta)
+    index.add_with_ids(vec.astype(np.float32)[None, :], np.array([cap_id]))
+    id_map[cap_id] = ("current_chunk", meta)
+    return {"ok": True}
+
+# ---------------------------------------------------------------------------
+
+@app.on_event("startup")
+async def _bg_tasks():
+    asyncio.create_task(_push_loop())
+
+async def _push_loop():
+    while True:
+        await push_closed_chunks()
+        await asyncio.sleep(30)
+
+# ---------------------------------------------------------------------------
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=9000)

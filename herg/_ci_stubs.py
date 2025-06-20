@@ -260,6 +260,37 @@ def inject():
         sys.modules["IPython.core.magic"] = ipy.core.magic
         sys.modules["IPython.display"] = ipy.display
 
+    # hvlogfs stub used by agent tests
+    if importlib.util.find_spec("herg.hvlogfs") is None:
+        hv = ModuleType("herg.hvlogfs")
+
+        class Capsule:
+            def __init__(self, cap_id, mu, meta):
+                self.id_int = int(cap_id)
+                self.mu = mu
+                self.meta = meta
+                self.chunk = "mem"
+                self.active = True
+
+        class HVLogFS:
+            def __init__(self, path: str):
+                self.path = path
+                self._caps = []
+
+            def append_cap(self, prefix: str, cap_id: int, mu, meta: dict) -> None:
+                self._caps.append(Capsule(cap_id, mu, meta))
+
+            def iter_capsules(self, prefix: str = None):
+                for c in self._caps:
+                    yield c
+
+            def chunks(self):
+                return []
+
+        hv.HVLogFS = HVLogFS
+        hv.Capsule = Capsule
+        sys.modules["herg.hvlogfs"] = hv
+
 # When imported, perform injection
 inject()
 

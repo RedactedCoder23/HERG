@@ -1,0 +1,10 @@
+boto3>=1.34.15
+faiss-cpu==1.7.4.post2        # switch to faiss-gpu in Dockerfile if you like
+fastapi>=0.111
+uvicorn[standard]>=0.29
+orjson>=3.10
+numpy>=1.26
+pyhdlib>=0.6            # if you want ready-made bind/unbind
+zstandard>=0.22
+python-dotenv>=1.0
+tenacity>=8.3            # retry helpers

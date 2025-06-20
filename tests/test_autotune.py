@@ -22,6 +22,7 @@ def test_integration_run(tmp_path, monkeypatch, capsys):
         '--ticks', '200',
         '--tune-interval', '1',
         '--goal', 'retention',
+        '--tuner', 'hill',
     ]
     with mock.patch.object(sys, 'argv', argv):
         from herg.cli import main

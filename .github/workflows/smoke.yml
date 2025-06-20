@@ -11,6 +11,7 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.11"]
+        tuner: [hill, bandit]
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
@@ -21,7 +22,7 @@ jobs:
         run: |
           python -m pip install -e .[ci]
       - name: Run smoke simulation
-        run: bash scripts/smoke_run.sh
+        run: TUNER=${{ matrix.tuner }} bash scripts/smoke_run.sh
       - name: Upload smoke artifacts
         uses: actions/upload-artifact@v4
         with:

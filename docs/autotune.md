@@ -16,3 +16,9 @@ All changes are persisted back to `~/.config/herg/config.yml`.
 Parameters never exceed predefined bounds.  Failures are logged to
 `~/.cache/herg/autotune.log` as JSON lines but never crash the main loop.
 You can visualise the metrics with `scripts/plot_autotune.py autotune.log`.
+
+## Bandit tuner
+
+`BanditTuner` implements a simple \u03b5-greedy algorithm that explores
+parameter tweaks at random early on then gradually exploits the best known
+updates.  Select it with `--tuner bandit` on the CLI.

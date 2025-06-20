@@ -6,3 +6,4 @@
 * 2025-06-25 feat: packaging files for editable install
 * 2025-06-26 fix: stub heavy deps for CI
 * 2025-06-27 fix: install real NumPy/PyYAML/IPython for tests
+* 2025-06-28 chore: add smoke-sim workflow

@@ -41,7 +41,9 @@ def main() -> None:
     p_mount.add_argument('path')
 
     p_auto = sub.add_parser('auto-run')
+    p_auto.add_argument('--nvec', type=int, default=20000)
     p_auto.add_argument('--ticks', type=int, default=1000)
+    p_auto.add_argument('--radius', type=int, default=cfg.radius)
     p_auto.add_argument('--tune-interval', type=int, default=30)
     p_auto.add_argument('--goal', default='retention', choices=['throughput','retention','latency'])
     p_auto.add_argument('--profile', action='store_true')

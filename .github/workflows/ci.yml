@@ -17,6 +17,12 @@ jobs:
         run: |
           python -m pip install -e .[ci]
           python -m pip install pytest
+
+          # sanity print
+          python - <<'PY'
+          import sys, numpy, yaml, IPython
+          print("NumPy", numpy.__version__, "PyYAML", yaml.__version__, "IPython", IPython.__version__, file=sys.stderr)
+          PY
       - name: Run unit tests
         run: pytest -q
       - name: Run style checks

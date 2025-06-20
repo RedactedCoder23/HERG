@@ -5,3 +5,4 @@
 * 2025-06-24 feat: optional pre-commit wrapper
 * 2025-06-25 feat: packaging files for editable install
 * 2025-06-26 fix: stub heavy deps for CI
+* 2025-06-27 fix: install real NumPy/PyYAML/IPython for tests

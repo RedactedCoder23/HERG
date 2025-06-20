@@ -2,6 +2,11 @@ import hashlib
 import os
 import numpy as np
 from herg import backend as B
+from herg.sinc_kernel import flavor_coords
+
+
+def sinc_sep(x):
+    return np.prod(np.sinc(x / np.pi), axis=-1)
 
 DIM_DEFAULT = 2048          # can be overridden per-call
 _LCG_A = 1103515245
@@ -17,7 +22,8 @@ def _lcg(value):
 def seed_to_hyper(seed: bytes,
                   dim: int = DIM_DEFAULT,
                   ternary: bool = False,
-                  device: str | None = None):
+                  device: str | None = None,
+                  alpha: float = 0.0):
     """
     Deterministic ±1 (or ternary) hyper-vector from an arbitrary seed.
 
@@ -43,7 +49,14 @@ def seed_to_hyper(seed: bytes,
             if i % 3:
                 vals[i] = 0
 
-    return B.tensor(vals, dtype=np.int8, device=device)
+    hv = np.asarray(vals, dtype=np.float32)
+    if dim % 6 == 0:
+        coords = flavor_coords(seed) / 255.0 * np.pi * 2 - np.pi
+        weights = np.sinc((alpha * coords) / np.pi).reshape(6, 1)
+        hv = hv.reshape(6, dim // 6) * weights
+        hv = hv.reshape(dim)
+    hv = np.sign(hv).astype(np.int8)
+    return B.tensor(hv, dtype=np.int8, device=device)
 
 
 # convenience wrapper used by CapsuleStore

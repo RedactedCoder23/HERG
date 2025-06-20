@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=67", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "herg"
+version = "0.1.0"
+description = "HERG – Hypervector Engine with Astrocyte-inspired Capsules"
+requires-python = ">=3.8"
+dependencies = []
+
+[project.optional-dependencies]
+ci = []
+dev = ["pre-commit>=3.7.0"]
+
+[tool.setuptools.packages.find]
+exclude = ["tests*", "docs*", "scripts*"]

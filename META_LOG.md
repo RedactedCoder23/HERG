@@ -3,3 +3,4 @@
 * 2025-06-22 feat: autotune first pass
 * 2025-06-23 feat: closed-loop autotune
 * 2025-06-24 feat: optional pre-commit wrapper
+* 2025-06-25 feat: packaging files for editable install

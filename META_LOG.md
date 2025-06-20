@@ -12,3 +12,4 @@
 * 2025-06-30 fix: patch review nits
 * 2025-06-30 fix: patch review nits #2
 * 2025-06-20  feat: live-learning loop (Hebbian, energy decay, novelty branching)
+* 2025-06-20  feat: live-learning capsules, /health, API key guard.

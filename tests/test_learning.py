@@ -21,7 +21,8 @@ def test_hebbian():
     v = np.ones(3, dtype=np.float32)
     for _ in range(10):
         c.update(v, 1.0)
-    assert np.allclose(c.mu, v, atol=0.1)
+    err = float(np.linalg.norm(c.mu - v))
+    assert err < 0.1
 
 
 def test_energy_decay():

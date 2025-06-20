@@ -28,9 +28,9 @@ def _etag(path: Path) -> str:
 @retry(stop=stop_after_attempt(5), wait=wait_exponential())
 async def _upload(chunk: Path):
     key = f"{S3_PREFIX}{chunk.name}"
-    etag_local = _etag(chunk)
+    etag_local = await asyncio.to_thread(_etag, chunk)
     try:
-        obj = s3.head_object(Bucket=S3_BUCKET, Key=key)
+        obj = await asyncio.to_thread(s3.head_object, Bucket=S3_BUCKET, Key=key)
         if obj["ETag"].strip('"') == etag_local:
             log.debug("%s already in bucket", chunk.name)
             return
@@ -51,11 +51,13 @@ async def _download(key: str):
 
 async def push_closed_chunks():
     tasks = []
-    for chunk in LOCAL_DIR.glob("chunk-*.dat"):
-        tasks.append(_upload(chunk))
-        if len(tasks) >= PARALLEL:
-            await asyncio.gather(*tasks)
-            tasks.clear()
+    # TODO remove legacy glob after 2025-08
+    for pattern in ("chunk-*.dat", "*.closed"):
+        for chunk in LOCAL_DIR.glob(pattern):
+            tasks.append(_upload(chunk))
+            if len(tasks) >= PARALLEL:
+                await asyncio.gather(*tasks)
+                tasks.clear()
     if tasks:
         await asyncio.gather(*tasks)
 

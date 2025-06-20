@@ -8,3 +8,6 @@
 * 2025-06-27 fix: install real NumPy/PyYAML/IPython for tests
 * 2025-06-28 chore: add smoke-sim workflow
 * 2025-06-29 feat: add RL bandit tuner
+* 2025-06-30 feat: infra polish (health probe, async S3, API key, etc.)
+* 2025-06-30 fix: patch review nits
+* 2025-06-30 fix: patch review nits #2

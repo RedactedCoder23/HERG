@@ -1,38 +1,8 @@
-import time
 import numpy as np
-from dataclasses import dataclass, field
-from typing import Any
-from herg import backend as B
+from .capsule import Capsule
 
 EdgeId = int
 Weight = int  # int16
-
-
-@dataclass
-class Capsule:
-    """Ephemeral / persistent node in the HERG capsule graph."""
-    id: int
-    vec: Any
-    last_used: int
-    edge_ids: list[EdgeId] = field(default_factory=list)
-    edge_wts: list[Weight] = field(default_factory=list)
-    mean: Any | None = None
-    L: Any | None = None
-    entropy: float = 0.0
-
-    def to(self, device=None):
-        self.vec = B.tensor(B.as_numpy(self.vec), dtype=np.int8, device=device)
-
-    def promote(self, dim: int = 6000) -> None:
-        if B.device_of(self.vec) != "cpu":
-            return
-        from herg.cupy_encoder import seed_to_cupy
-        self.vec = seed_to_cupy(self.id.to_bytes(32, "big"), dim=dim)
-
-    def demote(self) -> None:
-        import numpy as np
-        from herg import backend as B
-        self.vec = B.tensor(B.as_numpy(self.vec), dtype=np.int8, device="cpu")
 
 
 class EdgeCOO:

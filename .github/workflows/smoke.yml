@@ -11,6 +11,7 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.11"]
+        tuner: [bandit]
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
@@ -21,9 +22,12 @@ jobs:
         run: |
           python -m pip install -e .[ci]
       - name: Run smoke simulation
-        run: bash scripts/smoke_run.sh
-      - name: Upload smoke artifacts
+        run: TUNER=${{ matrix.tuner }} bash scripts/smoke_run.sh
+      - name: Upload logs
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: smoke-logs
+          # ensure unique name per matrix leg and retry
+          name: smoke-${{ matrix.tuner }}-${{ github.run_number }}-${{ github.run_attempt }}
           path: artifacts/
+          retention-days: 7

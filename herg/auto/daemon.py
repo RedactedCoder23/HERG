@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 
 from .metrics import MetricStore
-from .tuner import HillClimbTuner
+from .tuner import HillClimbTuner, BanditTuner
 from .. import config
 
 logger = logging.getLogger(__name__)
@@ -18,7 +18,10 @@ LOG_PATH = Path.home() / ".cache" / "herg" / "autotune.log"
 
 def start(store: MetricStore, cfg: config.Config, interval: int, goal: str) -> threading.Thread:
     LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
-    tuner = HillClimbTuner()
+    if getattr(cfg, 'tuner', 'hill') == 'bandit':
+        tuner = BanditTuner()
+    else:
+        tuner = HillClimbTuner()
 
     def loop() -> None:
         while getattr(store, "running", True):

@@ -46,6 +46,9 @@ def main() -> None:
     p_auto.add_argument('--radius', type=int, default=cfg.radius)
     p_auto.add_argument('--tune-interval', type=int, default=30)
     p_auto.add_argument('--goal', default='retention', choices=['throughput','retention','latency'])
+    p_auto.add_argument('--tuner', default=cfg.tuner,
+                        choices=['hill','cma','bandit'],
+                        help='select parameter tuner ("hill" legacy, default bandit)')
     p_auto.add_argument('--profile', action='store_true')
 
     p_save = sub.add_parser('save')
@@ -109,6 +112,9 @@ def main() -> None:
         store = CapsuleStore()
         metrics = MetricStore()
         from herg.auto import daemon
+        cfg.radius = args.radius
+        cfg.tuner = args.tuner
+        config.atomic_save(cfg)
         tuner_thread = daemon.start(metrics, cfg, args.tune_interval, args.goal)
         ctx = Prof() if args.profile else nullcontext()
         with ctx:

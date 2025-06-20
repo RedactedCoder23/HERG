@@ -19,6 +19,7 @@ class Config:
     scrub_interval: int = 60
     gossip_every: int = 8
     energy_drain: float = 0.0
+    tuner: str = 'bandit'
 
     def apply(self, delta: dict) -> None:
         for k, v in delta.items():

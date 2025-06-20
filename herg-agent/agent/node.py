@@ -10,6 +10,7 @@ import numpy as np
 import faiss, orjson, uvicorn
 from fastapi import FastAPI, HTTPException, Request
 from agent.utils import safe_search
+from herg.faiss_wrapper import make_index
 from herg.hvlogfs import HVLogFS          # assuming you expose this
 from agent.encoder_ext import encode, prefix
 from agent.memory import MemoryCapsule, SelfCapsule, maybe_branch
@@ -37,7 +38,7 @@ M = 64                     # PQ code size
 NODE_KEY = os.getenv("NODE_KEY")
 app = FastAPI()
 hvlog = HVLogFS(str(HVLOG_DIR))
-index = faiss.IndexIDMap(faiss.IndexFlatL2(DIM))
+index = faiss.IndexIDMap(make_index(DIM))
 id_map = {}         # capsule_id -> (chunk_offset, meta_dict, mu)
 
 SIM_THR = 0.9
@@ -73,6 +74,15 @@ async def health():
 async def _load():
     asyncio.create_task(hydrate_prefix(SHARD_KEY))
     await _rebuild()
+    # load persisted SELF capsule if present
+    global self_cap
+    for cap in hvlog.iter_capsules(prefix(0)):
+        if cap.id_int == 0:
+            self_cap.mu = cap.mu.astype(np.float32)
+            self_cap.step = int(cap.meta.get("step", 0))
+            self_cap.mean_reward = float(cap.meta.get("mean_reward", 0.0))
+            self_cap.entropy = float(cap.meta.get("entropy", 0.0))
+            break
     asyncio.create_task(_rebuild_periodic())
 
 async def _rebuild():
@@ -116,7 +126,7 @@ async def query(request: Request):
     for dist, cid in zip(D[0], I[0]):
         if cid == -1:
             continue
-        chunk, meta = id_map.get(cid, (None, None))
+        chunk, meta, _ = id_map.get(cid, (None, None, None))
         results.append({"capsule": int(cid), "dist": float(dist), "meta": meta})
     return results
 
@@ -162,6 +172,12 @@ async def insert(request: Request):
 
     maybe_branch(graph, cap, vec, reward)
     self_cap.bump(reward, 0.0)
+    log.info("Δ|μ| %.3f", float(np.linalg.norm(cap.mu - vec)))
+    hvlog.append_cap(prefix(0), cap_id=0, mu=self_cap.mu, meta={
+        "step": self_cap.step,
+        "mean_reward": self_cap.mean_reward,
+        "entropy": self_cap.entropy,
+    })
     return {"ok": True}
 
 # ---------------------------------------------------------------------------

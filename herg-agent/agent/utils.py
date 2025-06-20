@@ -26,9 +26,12 @@ if __name__ == "__main__":
 
 import numpy as np
 import faiss
+import os
 
 
 def safe_search(index: faiss.Index, xb, k: int):
+    if os.getenv("USE_FLAT", "") == "1":
+        return index.search(xb, k)
     if index.ntotal == 0:
         return np.empty((1, 0)), np.empty((1, 0), dtype=np.int64)
     return index.search(xb, k)

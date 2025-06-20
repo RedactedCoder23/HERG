@@ -4,7 +4,7 @@ import numpy as np
 from herg.backend import cosine
 
 DECAY = 0.99
-LR = 0.05
+LR = 0.25
 NEW_THR = 0.12
 
 @dataclass
@@ -31,13 +31,13 @@ class SelfCapsule:
         self.step += 1
         self.mean_reward = 0.99 * self.mean_reward + 0.01 * reward
         self.entropy = routing_entropy
-        self.mu[:3] = [self.step % 256, self.mean_reward, self.entropy]
+        self.mu[:3] = [self.step & 0xFF, self.mean_reward, self.entropy]
 
 
 def maybe_branch(graph, parent_cap: MemoryCapsule, vec: np.ndarray, reward: float):
     if reward < -0.2 or cosine(vec, parent_cap.mu) < NEW_THR:
-        child_id = int.from_bytes(os.urandom(16), "big")
-        child = MemoryCapsule(child_id, vec.copy(), {"text": "", "energy": 1.0})
+        child_id = int.from_bytes(os.urandom(4), "big")
+        child = MemoryCapsule(child_id, vec.copy(), {"energy": 1.0})
         if hasattr(graph, "add"):
             graph.add(child)
         if hasattr(graph, "add_edge"):

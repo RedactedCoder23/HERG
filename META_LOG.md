@@ -11,3 +11,4 @@
 * 2025-06-30 feat: infra polish (health probe, async S3, API key, etc.)
 * 2025-06-30 fix: patch review nits
 * 2025-06-30 fix: patch review nits #2
+* 2025-06-20  feat: live-learning loop (Hebbian, energy decay, novelty branching)

@@ -2,3 +2,7 @@
 * 2025-06-21 User – integrate micro-vector blocks, CLI config, bench script
 * 2025-06-22 feat: autotune first pass
 * 2025-06-23 feat: closed-loop autotune
+* 2025-06-24 feat: optional pre-commit wrapper
+* 2025-06-25 feat: packaging files for editable install
+* 2025-06-26 fix: stub heavy deps for CI
+* 2025-06-27 fix: install real NumPy/PyYAML/IPython for tests

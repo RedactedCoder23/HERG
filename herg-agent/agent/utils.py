@@ -23,3 +23,13 @@ if __name__ == "__main__":
     if args.cmd == "prefix":
         data = orjson.loads(args.json)
         sys.stdout.buffer.write(add_prefix(data))
+
+import numpy as np
+import faiss
+
+
+def safe_search(index: faiss.Index, xb, k: int):
+    if index.ntotal == 0:
+        return np.empty((1, 0)), np.empty((1, 0), dtype=np.int64)
+    return index.search(xb, k)
+

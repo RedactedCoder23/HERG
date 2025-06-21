@@ -1,6 +1,5 @@
 import numpy as np
 import pytest
-from herg import backend as B
 from herg.sinc_kernel import weighted_sinc, modulate, sinc_kernel
 from herg.graph_caps.store import CapsuleStore
 
@@ -58,4 +57,3 @@ def test_sinc_kernel_radial_alpha_mean():
     r = np.linalg.norm(x, axis=-1)
     expected = np.sinc(np.mean(alpha) * r)[..., None] * np.ones_like(x)
     assert np.allclose(out, expected)
-

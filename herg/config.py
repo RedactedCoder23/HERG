@@ -21,6 +21,8 @@ class Config:
     energy_drain: float = 0.0
     tuner: str = 'bandit'
     lane_split: tuple[int, int, int] = (4096, 2048, 2048)
+    kernel_alpha: float | list[float] = 1.0
+    kernel_mode: str = 'separable'
 
     def apply(self, delta: dict) -> None:
         for k, v in delta.items():
@@ -38,6 +40,8 @@ def load(path: Path | None = None) -> 'Config':
             data = {}
         if 'lane_split' in data:
             data['lane_split'] = tuple(data['lane_split'])
+        if 'kernel_alpha' in data and isinstance(data['kernel_alpha'], list):
+            data['kernel_alpha'] = [float(v) for v in data['kernel_alpha']]
         return Config(**{**asdict(Config()), **data})
     cfg = Config()
     save(cfg, p)
@@ -49,6 +53,8 @@ def save(cfg: 'Config', path: Path | None = None) -> None:
     p.parent.mkdir(parents=True, exist_ok=True)
     data = asdict(cfg)
     data['lane_split'] = list(cfg.lane_split)
+    if isinstance(cfg.kernel_alpha, tuple):
+        data['kernel_alpha'] = list(cfg.kernel_alpha)
     p.write_text(yaml.dump(data))
 
 
@@ -61,6 +67,8 @@ def atomic_save(cfg: 'Config', path: Path | None = None) -> None:
         with lock_path(p):
             data = asdict(cfg)
             data['lane_split'] = list(cfg.lane_split)
+            if isinstance(cfg.kernel_alpha, tuple):
+                data['kernel_alpha'] = list(cfg.kernel_alpha)
             tmp.write_text(yaml.dump(data))
             os.replace(tmp, p)
     except Exception as e:  # pragma: no cover - file I/O errors

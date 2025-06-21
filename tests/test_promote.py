@@ -1,6 +1,4 @@
 # ◇ CODEX_IMPLEMENT: test promote/demote device toggling
-import numpy as np
-from herg.graph_caps import Capsule
 from herg.graph_caps.store import CapsuleStore
 from herg import backend as B
 import pytest

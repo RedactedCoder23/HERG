@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 import numpy as np, os, time
-from agent.utils import cosine
+from .backend import cosine
 
 # Hebbian learning constants
 LR, DECAY, NEW_THR = 0.05, 0.99, 0.12

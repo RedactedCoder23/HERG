@@ -132,9 +132,9 @@ def main() -> None:
                 f"{args.goal} improved from {start:.2f} -> {metrics.retention:.2f} after {metrics.adjustments} adjustments"
             )
     elif args.cmd == 'save':
-        try:
+        if Path(args.path).exists():
             store = load_snapshot(args.path)
-        except Exception:
+        else:
             store = CapsuleStore()
         save_snapshot(store, args.path)
         print(f"Saved {len(store.caps)} capsules")

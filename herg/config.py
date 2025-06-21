@@ -32,7 +32,12 @@ class Config:
 def load(path: Path | None = None) -> 'Config':
     p = Path(path or CONFIG_PATH).expanduser()
     if p.exists():
-        data = yaml.safe_load(p.read_text()) or {}
+        try:
+            data = yaml.safe_load(p.read_text()) or {}
+        except Exception:
+            data = {}
+        if 'lane_split' in data:
+            data['lane_split'] = tuple(data['lane_split'])
         return Config(**{**asdict(Config()), **data})
     cfg = Config()
     save(cfg, p)
@@ -42,7 +47,9 @@ def load(path: Path | None = None) -> 'Config':
 def save(cfg: 'Config', path: Path | None = None) -> None:
     p = Path(path or CONFIG_PATH).expanduser()
     p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(yaml.dump(asdict(cfg)))
+    data = asdict(cfg)
+    data['lane_split'] = list(cfg.lane_split)
+    p.write_text(yaml.dump(data))
 
 
 def atomic_save(cfg: 'Config', path: Path | None = None) -> None:
@@ -52,7 +59,9 @@ def atomic_save(cfg: 'Config', path: Path | None = None) -> None:
     tmp = p.with_suffix('.tmp')
     try:
         with lock_path(p):
-            tmp.write_text(yaml.dump(asdict(cfg)))
+            data = asdict(cfg)
+            data['lane_split'] = list(cfg.lane_split)
+            tmp.write_text(yaml.dump(data))
             os.replace(tmp, p)
     except Exception as e:  # pragma: no cover - file I/O errors
         logging.error("atomic_save failed: %s", e)

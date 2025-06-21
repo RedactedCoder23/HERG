@@ -4,23 +4,27 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "herg"
-version = "0.1.0"
-description = "HERG – Hypervector Engine with Astrocyte-inspired Capsules"
-requires-python = ">=3.8"
-dependencies = []
+version = "0.1.0a0"
+description = "HERG — Hypervector Encoder & Graph capsules"
+authors = [{name="HERG Team"}]
+requires-python = ">=3.9"
+dependencies = [
+    "numpy>=1.26",
+    "faiss-cpu>=1.7.4",
+    "fastapi>=0.110",
+    "uvicorn>=0.29",
+    "orjson>=3.9",
+]
+
+[project.scripts]
+herg-run = "herg.cli:main"
 
 [project.optional-dependencies]
-ci = [
-    "numpy==1.26.4",
-    "PyYAML==6.0.1",
-    "ipython==8.24.0",
-    "faiss-cpu",
-    "fastapi",
-    "orjson",
-    "uvicorn",
+dev = [
+    "pytest",
+    "pytest-cov",
     "httpx",
 ]
-dev = ["pre-commit>=3.7.0"]
 
 [tool.setuptools.packages.find]
 exclude = ["tests*", "docs*", "scripts*"]

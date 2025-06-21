@@ -25,7 +25,7 @@ def test_integration_run(tmp_path, monkeypatch, capsys):
         '--tuner', 'hill',
     ]
     with mock.patch.object(sys, 'argv', argv):
-        from herg.cli import main
+        from cli_legacy import main
 
         main()
         out = capsys.readouterr().out

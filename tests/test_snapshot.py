@@ -22,7 +22,7 @@ def test_cli_save_load(tmp_path, capsys):
             "-c",
             (
                 "import sys; from cli_legacy import main; "
-                f"sys.argv=['herg','save','{file}']; main()"
+                f"sys.argv=['herg', 'save', '{file}']; main()"  # noqa: E702
             ),
         ],
         check=True,
@@ -34,7 +34,7 @@ def test_cli_save_load(tmp_path, capsys):
             "-c",
             (
                 "import sys; from cli_legacy import main; "
-                f"sys.argv=['herg','load','{file}']; main()"
+                f"sys.argv=['herg', 'load', '{file}']; main()"  # noqa: E702
             ),
         ],
         check=True,

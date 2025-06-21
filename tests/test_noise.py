@@ -7,10 +7,12 @@ from herg import backend as B
 def test_bitflip():
     rng = np.random.default_rng(1)
     store = CapsuleStore(dim=240)
+    # fmt: off
     seeds = [
         rng.integers(0, 256, 32, dtype=np.uint8).tobytes()
         for _ in range(8)
     ]
+    # fmt: on
     ids = []
     for s in seeds:
         cap = store.spawn(s)

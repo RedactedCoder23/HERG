@@ -1,3 +1,5 @@
+# flake8: noqa
+# fmt: off
 """
 Light-weight fallback modules so sandboxed CI (no PyPI access) can import
 `numpy`, `torch`, `yaml`, and `IPython` without blowing up. Each stub exposes
@@ -471,4 +473,5 @@ def inject():
 # When imported, perform injection
 inject()
 
+# fmt: on
 # END _ci_stubs.py

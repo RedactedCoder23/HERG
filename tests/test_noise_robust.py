@@ -6,10 +6,12 @@ from herg import backend as B
 
 def test_noise_recall():
     rng = np.random.default_rng(0)
+    # fmt: off
     seeds = [
         rng.integers(0, 256, size=32, dtype=np.uint8).tobytes()
         for _ in range(8)
     ]
+    # fmt: on
     store = CapsuleStore(dim=240)
     ids = []
     for s in seeds:

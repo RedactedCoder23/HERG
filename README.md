@@ -13,9 +13,9 @@ cd HERG
 pip install -e .[dev]          # editable install
 # try a quick text demo with a few seeds
 herg-run --demo text --seed foo --seed bar --seed baz
-# Faiss is optional; without it some demo features may raise ImportError
-# If pip install faiss-cpu fails, try `conda install -c conda-forge faiss-cpu`
-# or set `USE_FLAT=1` before running the demo.
+# Faiss is optional; without it some demo features may raise ImportError.
+# If `pip install faiss-cpu` fails, try `conda install -c conda-forge faiss-cpu`
+# or set `USE_FLAT=1` to fall back to a slower index.
 ```
 
 ### Code Coverage

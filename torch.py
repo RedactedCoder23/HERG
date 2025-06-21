@@ -20,7 +20,10 @@ class Tensor:
         return self.data.shape
 
     def to(self, device=None, dtype=None):
-        return Tensor(self.data.astype(dtype or self.data.dtype), device or self.device)
+        return Tensor(
+            self.data.astype(dtype or self.data.dtype),
+            device or self.device,
+        )
 
     def view(self, *shape):
         return Tensor(self.data.reshape(*shape), self.data.dtype, self.device)
@@ -62,7 +65,10 @@ def zeros(*size, dtype=float32, device=None):
 
 
 def stack(seq, dim=0):
-    arr = np.stack([s.data if isinstance(s, Tensor) else s for s in seq], axis=dim)
+    arr = np.stack(
+        [s.data if isinstance(s, Tensor) else s for s in seq],
+        axis=dim,
+    )
     return Tensor(arr, arr.dtype, seq[0].device if seq else "cpu")
 
 

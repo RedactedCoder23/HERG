@@ -16,15 +16,29 @@ def test_save_and_load(tmp_path):
 
 def test_cli_save_load(tmp_path, capsys):
     file = tmp_path / "brain.pkl"
-    subprocess.run([
-        sys.executable,
-        "-c",
-        f"import sys; from cli_legacy import main; sys.argv=['herg','save','{file}']; main()",
-    ], check=True)
+    subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            (
+                "import sys; from cli_legacy import main; "
+                f"sys.argv=['herg','save','{file}']; main()"
+            ),
+        ],
+        check=True,
+    )
     assert file.exists()
-    capture = subprocess.run([
-        sys.executable,
-        "-c",
-        f"import sys; from cli_legacy import main; sys.argv=['herg','load','{file}']; main()",
-    ], check=True, capture_output=True, text=True)
+    capture = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            (
+                "import sys; from cli_legacy import main; "
+                f"sys.argv=['herg','load','{file}']; main()"
+            ),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
     assert "Loaded 0 capsules" in capture.stdout

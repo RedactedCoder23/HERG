@@ -142,6 +142,7 @@ def inject():
                 return NDArray([0.0] * n)
 
         np.random.default_rng = lambda seed=None: _RNG(seed)
+        np.random.Generator = _RNG
         np.random.randint = lambda low, high=None, size=None, **k: NDArray([0] * (size if isinstance(size, int) else size[0]), dtype="int32")
         np.random.random = lambda size=None: NDArray([0.0] * (size if isinstance(size, int) else size[0]))
         np.random.randn = lambda *shape: NDArray([0.0] * (shape[0] if shape else 1))
@@ -149,6 +150,7 @@ def inject():
         np.sign = lambda arr: NDArray([1 if i >= 0 else -1 for i in (arr if isinstance(arr, (list, NDArray)) else [arr])], dtype="int8")
         np.clip = lambda arr, a_min, a_max: NDArray([max(a_min, min(a_max, x)) for x in (arr if isinstance(arr, (list, NDArray)) else [arr])])
         np.vectorize = lambda fn: lambda arr: NDArray([fn(x) for x in (arr if isinstance(arr, (list, NDArray)) else [arr])])
+        np.unpackbits = lambda arr, axis=None: NDArray([0] * (len(arr) * 8), dtype="uint8")
 
         def _prod(arr, axis=None):
             if axis is None:

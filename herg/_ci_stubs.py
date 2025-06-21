@@ -8,6 +8,7 @@ import importlib.util
 import sys
 from types import ModuleType
 from contextlib import contextmanager
+import builtins
 
 
 def inject():
@@ -86,6 +87,25 @@ def inject():
             def tolist(self):
                 return list(self)
 
+            def __getitem__(self, key):
+                if isinstance(key, tuple):
+                    if key == (slice(None), None):
+                        return NDArray([[x] for x in self], dtype=self.dtype)
+                    raise TypeError("unsupported index")
+                res = super().__getitem__(key)
+                if isinstance(res, list):
+                    return NDArray(res, dtype=self.dtype)
+                return res
+
+            def sum(self, axis=None):
+                if axis is None:
+                    return builtins.sum(self)
+                if axis == 1:
+                    return NDArray([builtins.sum(row) for row in self], dtype=self.dtype)
+                if axis == 0:
+                    return NDArray([builtins.sum(col) for col in zip(*self)], dtype=self.dtype)
+                raise NotImplementedError
+
         NDArray.__qualname__ = "NDArray"
         NDArray.__module__ = __name__
 
@@ -111,6 +131,14 @@ def inject():
         np.any = lambda x: any(x)
         np.count_nonzero = lambda x: len([i for i in x if i])
         np.argsort = lambda x: sorted(range(len(x)), key=lambda i: x[i])
+        def _arange(start, stop=None, step=1, *, dtype="int32"):
+            if stop is None:
+                start, stop = 0, start
+            start = int(start)
+            stop = int(stop)
+            step = int(step)
+            return NDArray(list(range(start, stop, step)), dtype=str(dtype))
+        np.arange = _arange
         np.cos = lambda x: x
         np.sin = lambda x: x
         np.sinc = lambda x: x
@@ -150,7 +178,19 @@ def inject():
         np.sign = lambda arr: NDArray([1 if i >= 0 else -1 for i in (arr if isinstance(arr, (list, NDArray)) else [arr])], dtype="int8")
         np.clip = lambda arr, a_min, a_max: NDArray([max(a_min, min(a_max, x)) for x in (arr if isinstance(arr, (list, NDArray)) else [arr])])
         np.vectorize = lambda fn: lambda arr: NDArray([fn(x) for x in (arr if isinstance(arr, (list, NDArray)) else [arr])])
-        np.unpackbits = lambda arr, axis=None: NDArray([0] * (len(arr) * 8), dtype="uint8")
+        np.bitwise_xor = lambda a, b: NDArray([x ^ y for x, y in zip(a, b)], dtype="uint8")
+        def _unpackbits(arr, axis=None):
+            if axis == 1 and arr and isinstance(arr[0], (list, NDArray)):
+                data = [int(row[0]) for row in arr]
+            else:
+                data = [int(x) for x in arr]
+            bits = [[(byte >> i) & 1 for i in range(7, -1, -1)] for byte in data]
+            if axis == 1:
+                return NDArray([NDArray(b, dtype="uint8") for b in bits], dtype="uint8")
+            flat = [bit for b in bits for bit in b]
+            return NDArray(flat, dtype="uint8")
+
+        np.unpackbits = _unpackbits
 
         def _prod(arr, axis=None):
             if axis is None:

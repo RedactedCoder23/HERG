@@ -8,7 +8,10 @@ from herg import backend as B
 def test_retention_50tasks():
     rng = np.random.default_rng(0)
     store = CapsuleStore(dim=240)
-    seeds = [rng.integers(0,256,32,dtype=np.uint8).tobytes() for _ in range(50)]
+    seeds = [
+        rng.integers(0, 256, 32, dtype=np.uint8).tobytes()
+        for _ in range(50)
+    ]
     ids = []
     for s in seeds:
         cap = store.spawn(s)

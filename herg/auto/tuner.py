@@ -9,6 +9,16 @@ class BoundError(Exception):
     pass
 
 
+def find_eta_max(successes: int, trials: int, beta: float = 0.05) -> float:
+    """Chernoff bound upper confidence on success rate."""
+    if trials == 0:
+        return 1.0
+    from math import log, sqrt
+    p = successes / trials
+    eps = sqrt(log(1.0 / beta) / (2 * trials))
+    return min(1.0, p + eps)
+
+
 PARAM_BOUNDS = {
     "radius": (1, 4),
     "block_size": (64, 4096),
@@ -16,6 +26,7 @@ PARAM_BOUNDS = {
     "alpha_b": (0.01, 1.0),
     "eta": (0.001, 1.0),
     "energy_drain": (0.0, 10.0),
+    "lane_split": (1024, 8192),
 }
 
 
@@ -34,6 +45,7 @@ class HillClimbTuner:
                 "alpha_b": 0.05,
                 "eta": 0.01,
                 "energy_drain": 0.1,
+                "lane_split": 512,
             }
         self.bad: deque[float] = deque(maxlen=3)
         self.last_good_metric: float | None = None
@@ -121,12 +133,16 @@ class BanditTuner(HillClimbTuner):
         state = int(val * 10)
         if self.prev_action is not None and self.prev_state is not None and self.prev_val is not None:
             reward = val - self.prev_val
+            if "lane_split" in self.prev_action:
+                r_now = find_eta_max(int(val * 1000), 1000)
+                r_prev = find_eta_max(int(self.prev_val * 1000), 1000)
+                reward = r_now - r_prev
             key = (self.prev_state, self.prev_action)
             old = self.q.get(key, 0.0)
             self.q[key] = 0.8 * old + 0.2 * reward
 
         actions = []
-        for p in ["radius", "eta", "alpha_u", "block_size"]:
+        for p in ["radius", "eta", "alpha_u", "block_size", "lane_split"]:
             step = self.step[p]
             actions.append(f"{p}+{step}")
             actions.append(f"{p}-{step}")
@@ -137,9 +153,15 @@ class BanditTuner(HillClimbTuner):
             if "-" in act:
                 delta = -delta
             cur = getattr(cfg, param)
-            new = cur + delta
-            lo, hi = PARAM_BOUNDS[param]
-            new = max(lo, min(hi, new))
+            if param == "lane_split":
+                d1 = int(cur[0] + delta)
+                lo, hi = PARAM_BOUNDS[param]
+                d1 = max(lo, min(hi, d1))
+                new = (d1, d1 // 2, d1 // 2)
+            else:
+                new = cur + delta
+                lo, hi = PARAM_BOUNDS[param]
+                new = max(lo, min(hi, new))
             if new != cur:
                 return {param: new}
             return {}

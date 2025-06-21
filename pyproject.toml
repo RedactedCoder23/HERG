@@ -14,6 +14,11 @@ ci = [
     "numpy==1.26.4",
     "PyYAML==6.0.1",
     "ipython==8.24.0",
+    "faiss-cpu",
+    "fastapi",
+    "orjson",
+    "uvicorn",
+    "httpx",
 ]
 dev = ["pre-commit>=3.7.0"]
 

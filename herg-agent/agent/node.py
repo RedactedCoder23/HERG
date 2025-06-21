@@ -75,7 +75,7 @@ async def _load():
     await _rebuild()
     # load persisted SELF capsule if present
     global self_cap
-    for cap in hvlog.iter_capsules(prefix(0)):
+    for cap in hvlog.iter_capsules(prefix=SHARD_KEY):
         if cap.id_int == 0:
             self_cap.mu = cap.mu.astype(np.float32)
             self_cap.step = int(cap.meta.get("step", 0))
@@ -172,7 +172,7 @@ async def insert(request: Request):
     maybe_branch(graph, cap, vec, reward)
     self_cap.bump(reward, 0.0)
     log.info("Δ|μ| %.3f", float(np.linalg.norm(cap.mu - vec)))
-    hvlog.append_cap(prefix(0), cap_id=0, mu=self_cap.mu, meta={
+    hvlog.append_cap(prefix=SHARD_KEY, cap_id=0, mu=self_cap.mu, meta={
         "step": self_cap.step,
         "mean_reward": self_cap.mean_reward,
         "entropy": self_cap.entropy,

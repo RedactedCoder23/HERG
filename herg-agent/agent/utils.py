@@ -26,13 +26,18 @@ if __name__ == "__main__":
 
 import numpy as np
 import faiss
+from herg.faiss_wrapper import HybridIndex
 
 
-def safe_search(index: faiss.Index, xb, k: int):
-    """Faiss search with empty-index guard."""
-    if index.ntotal == 0:
+def safe_search(index, xb, k: int):
+    """Search wrapper that handles empty HybridIndex or faiss index."""
+    if getattr(index, "ntotal", 0) == 0:
         return np.empty((1, 0)), np.empty((1, 0), dtype=np.int64)
-    return index.search(xb, k)
+    if isinstance(index, HybridIndex):
+        D, I = index.search(np.asarray(xb, np.uint8), k)
+        return D.astype(np.float32), I
+    D, I = index.search(np.asarray(xb, np.float32), k)
+    return D.astype(np.float32), I
 
 
 def cosine(a: np.ndarray, b: np.ndarray) -> float:

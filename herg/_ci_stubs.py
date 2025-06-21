@@ -291,6 +291,141 @@ def inject():
         hv.Capsule = Capsule
         sys.modules["herg.hvlogfs"] = hv
 
+    # --- lightweight JSON / web / vector stubs ---------------------------- #
+    if importlib.util.find_spec("orjson") is None:
+        import json as _json
+
+        orjson = ModuleType("orjson")
+        orjson.dumps = lambda obj: _json.dumps(obj).encode()
+        orjson.loads = lambda b: _json.loads(b)
+        sys.modules["orjson"] = orjson
+
+    if importlib.util.find_spec("fastapi") is None:
+        fastapi = ModuleType("fastapi")
+
+        class FastAPI:
+            def __init__(self):
+                self.routes = []
+
+            def get(self, path, tags=None):
+                def deco(fn):
+                    self.routes.append(("GET", path, fn))
+                    return fn
+
+                return deco
+
+            def post(self, path):
+                def deco(fn):
+                    self.routes.append(("POST", path, fn))
+                    return fn
+
+                return deco
+
+            def on_event(self, _):
+                def deco(fn):
+                    return fn
+
+                return deco
+
+        class HTTPException(Exception):
+            def __init__(self, status_code, detail=None):
+                self.status_code = status_code
+                self.detail = detail
+
+        class Request:
+            def __init__(self):
+                self.headers = {}
+
+            async def body(self):
+                return b""
+
+        fastapi.FastAPI = FastAPI
+        fastapi.HTTPException = HTTPException
+        fastapi.Request = Request
+        sys.modules["fastapi"] = fastapi
+
+        tc = ModuleType("fastapi.testclient")
+
+        class TestClient:
+            def __init__(self, app):
+                self.app = app
+
+            def post(self, *_a, **_k):
+                return type("Resp", (), {"status_code": 200, "json": lambda s: []})()
+
+            def get(self, *_a, **_k):
+                return type("Resp", (), {"status_code": 200, "json": lambda s: []})()
+
+        tc.TestClient = TestClient
+        sys.modules["fastapi.testclient"] = tc
+
+    if importlib.util.find_spec("uvicorn") is None:
+        uvicorn = ModuleType("uvicorn")
+
+        def run(*_a, **_k):
+            pass
+
+        uvicorn.run = run
+        sys.modules["uvicorn"] = uvicorn
+
+    if importlib.util.find_spec("faiss") is None:
+        import numpy as _np
+
+        faiss = ModuleType("faiss")
+
+        class IndexFlatL2:
+            def __init__(self, dim):
+                self._vecs = _np.empty((0, dim), dtype=_np.float32)
+                self._ids = _np.empty((0,), dtype=_np.int64)
+
+            def add_with_ids(self, xb, ids):
+                xb = _np.asarray(xb, _np.float32)
+                ids = _np.asarray(ids, _np.int64)
+                self._vecs = _np.vstack([self._vecs, xb])
+                self._ids = _np.hstack([self._ids, ids])
+
+            def search(self, xq, k):
+                if self._vecs.size == 0:
+                    d = _np.empty((len(xq), 0), _np.float32)
+                    i = _np.empty((len(xq), 0), _np.int64)
+                    return d, i
+                diff = self._vecs[None, :, :] - _np.asarray(xq, _np.float32)[:, None, :]
+                dist = _np.sum(diff ** 2, axis=2)
+                idx = _np.argsort(dist, axis=1)[:, :k]
+                d = _np.take_along_axis(dist, idx, 1)
+                i = _np.take_along_axis(self._ids[None, :], idx, 1)
+                return d, i
+
+            @property
+            def ntotal(self):
+                return self._vecs.shape[0]
+
+        class IndexIDMap:
+            def __init__(self, index):
+                self.index = index
+
+            def add_with_ids(self, xb, ids):
+                self.index.add_with_ids(xb, ids)
+
+            def search(self, xq, k):
+                return self.index.search(xq, k)
+
+            @property
+            def ntotal(self):
+                return self.index.ntotal
+
+        def vector_to_array(arr):
+            return _np.asarray(arr, _np.float32)
+
+        class Index(IndexFlatL2):
+            pass
+
+        faiss.IndexFlatL2 = IndexFlatL2
+        faiss.IndexIDMap = IndexIDMap
+        faiss.Index = Index
+        faiss.vector_to_array = vector_to_array
+        sys.modules["faiss"] = faiss
+
 # When imported, perform injection
 inject()
 

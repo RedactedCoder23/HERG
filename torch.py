@@ -5,6 +5,7 @@ int16 = np.int16
 int32 = np.int32
 float32 = np.float32
 
+
 class Tensor:
     def __init__(self, data, dtype=None, device=None):
         self.data = np.array(data, dtype=dtype)
@@ -51,31 +52,52 @@ class Tensor:
 def tensor(data, dtype=None, device=None):
     return Tensor(data, dtype, device)
 
+
 def as_tensor(data, dtype=None, device=None):
     return tensor(data, dtype, device)
 
+
 def zeros(*size, dtype=float32, device=None):
     return Tensor(np.zeros(size, dtype=dtype), dtype, device)
+
 
 def stack(seq, dim=0):
     arr = np.stack([s.data if isinstance(s, Tensor) else s for s in seq], axis=dim)
     return Tensor(arr, arr.dtype, seq[0].device if seq else "cpu")
 
+
 def cat(seq, dim=0):
-    arr = np.concatenate([s.data if isinstance(s, Tensor) else s for s in seq], axis=dim)
+    arr = np.concatenate(
+        [s.data if isinstance(s, Tensor) else s for s in seq], axis=dim
+    )
     return Tensor(arr, arr.dtype, seq[0].device if seq else "cpu")
+
 
 class nn:
     class functional:
         @staticmethod
         def pad(t, pad):
             left, right = pad
-            arr = np.pad(t.data if isinstance(t, Tensor) else t, ((0,0),(left,right)), constant_values=0)
-            return Tensor(arr, t.dtype if isinstance(t, Tensor) else arr.dtype, getattr(t, 'device', 'cpu'))
+            arr = np.pad(
+                t.data if isinstance(t, Tensor) else t,
+                ((0, 0), (left, right)),
+                constant_values=0,
+            )
+            return Tensor(
+                arr,
+                t.dtype if isinstance(t, Tensor) else arr.dtype,
+                getattr(t, "device", "cpu"),
+            )
+
 
 def erf(x):
     arr = np.erf(x.data if isinstance(x, Tensor) else x)
-    return Tensor(arr, getattr(x, 'dtype', arr.dtype), getattr(x, 'device', 'cpu'))
+    return Tensor(
+        arr,
+        getattr(x, "dtype", arr.dtype),
+        getattr(x, "device", "cpu"),
+    )
+
 
 class cuda:
     @staticmethod

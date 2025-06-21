@@ -19,3 +19,12 @@ def test_bandit_improves():
             cfg.apply(delta)
             store.val += 0.01
     assert store.val - 0.5 >= 0.05
+
+
+def test_bandit_lane_split():
+    cfg = config.Config()
+    tuner = BanditTuner(rng=random.Random(0), epsilon_start=1.0, epsilon_end=1.0)
+    delta = tuner.suggest({'retention': 0.5}, 'retention', cfg)
+    if 'lane_split' in delta:
+        cfg.apply(delta)
+    assert isinstance(cfg.lane_split, tuple)

@@ -20,6 +20,7 @@ class Config:
     gossip_every: int = 8
     energy_drain: float = 0.0
     tuner: str = 'bandit'
+    lane_split: tuple[int, int, int] = (4096, 2048, 2048)
 
     def apply(self, delta: dict) -> None:
         for k, v in delta.items():

@@ -277,8 +277,8 @@ def inject():
                 self.path = path
                 self._caps = []
 
-            def append_cap(self, prefix: str, cap_id: int, mu, meta: dict) -> None:
-                self._caps.append(Capsule(cap_id, mu, meta))
+            def append_cap(self, prefix: str, cap_id: int, mu, meta=None) -> None:
+                self._caps.append(Capsule(cap_id, mu, meta or {}))
 
             def iter_capsules(self, prefix: str = None):
                 for c in self._caps:

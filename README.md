@@ -32,6 +32,7 @@ Spin up a demo node and router then insert a capsule:
 export NODE_KEY=$(openssl rand -hex 16)
 python -m agent.node &
 python -m agent.router &
+curl -H "x-api-key: $NODE_KEY" http://localhost:9000/health
 payload=$(python -m agent.utils prefix '{"seed":"hi","text":"hello","reward":0.1}')
 curl -H "x-api-key: $NODE_KEY" -XPOST \
   -d "$payload" \
@@ -43,4 +44,5 @@ curl -H "x-api-key: $NODE_KEY" -XPOST \
 ```
 
 Queries hit the router on port 8000 as well.
-Inserts require the `x-api-key` header and may include `{"seed":"abc", "reward":1.0}`.
+Use the same `x-api-key` header for `/health`, `/insert`, and `/query`.
+Inserts may include `{"seed":"abc", "reward":1.0}`.

@@ -1,3 +1,6 @@
+[![CI](https://github.com/RedactedCoder23/HERG/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/RedactedCoder23/HERG/actions/workflows/ci.yml)
+[![Coverage](https://codecov.io/gh/RedactedCoder23/HERG/branch/main/graph/badge.svg)](https://codecov.io/gh/RedactedCoder23/HERG)
+[![PyPI version](https://img.shields.io/pypi/v/herg.svg)](https://pypi.org/project/herg/)
 # HERG — Hypervector Emergent Reasoning Graph
 
 A lightweight, self-evolving hyper-vector reasoning graph.
@@ -5,12 +8,15 @@ A lightweight, self-evolving hyper-vector reasoning graph.
 ### Quick-start
 
 ```bash
-git clone https://github.com/YourOrg/HERG.git
+git clone https://github.com/RedactedCoder23/HERG.git
 cd HERG
 pip install -e .[dev]          # editable install
 herg-run --demo text
 ```
 
+### Code Coverage
+
+Coverage reports are published to [Codecov](https://codecov.io/gh/RedactedCoder23/HERG) for each commit.
 
 **How Codex/GPT fits in →** see [`HERG_CODEx_GUIDE.md`](HERG_CODEx_GUIDE.md).
 
@@ -56,3 +62,9 @@ curl -H "x-api-key: $NODE_KEY" -XPOST \
 Queries hit the router on port 8000 as well.
 Use the same `x-api-key` header for `/health`, `/insert`, and `/query`.
 Inserts may include `{"seed":"abc", "reward":1.0}`.
+
+Licensed under the MIT License—see [LICENSE](LICENSE) for details.
+
+## Releases
+
+See the [GitHub releases](https://github.com/RedactedCoder23/HERG/releases) page for changelogs.

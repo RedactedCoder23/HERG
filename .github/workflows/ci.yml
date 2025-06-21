@@ -1,14 +1,87 @@
-name: test
-on: [push, pull_request]
+name: ci
+on:
+  push:
+    branches: [main, auto-evolve]
+  pull_request:
+    branches: [main, auto-evolve]
 
 jobs:
-  smoke:
+  lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
-        with: {python-version: '3.11'}
-      - run: |
-          python -m pip install -e .[dev]
+        with:
+          python-version: '3.11'
+      - name: Cache pip
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml','**/setup.cfg') }}
+      - run: python -m pip install -e .[dev]
+      - run: flake8 .
+      - run: mypy .
+
+  test:
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Cache pip
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml','**/setup.cfg') }}
+      - run: python -m pip install -e .[dev]
       - run: herg-run --demo text
-      - run: pytest -q
+      - name: smoke imports
+        run: |
+          python - <<'PY'
+          import sys, numpy as np, torch
+          from integrations.llm_hook import hook_forward
+          class DummyStore:
+              def spawn(self, seed, ts=None):
+                  class C: pass
+                  c = C(); c.vec = np.zeros(4, dtype=np.float32); return c
+          hook_forward(torch.zeros(1,4), [b'00'], DummyStore())
+          sys.path.append('herg-agent')
+          from agent.router import app
+          print('router', app)
+          PY
+      - run: pytest --cov=herg --cov-report=xml -q
+      - uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage.xml
+
+  benchmark:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Cache pip
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml','**/setup.cfg') }}
+      - run: python -m pip install -e .[dev]
+      - run: |
+          python - <<'PY'
+          import json, subprocess, time, pathlib, sys
+          base = pathlib.Path('bench/baseline.json')
+          baseline = json.load(base.open()) if base.exists() else {}
+          for script in pathlib.Path('bench').glob('*.py'):
+              t0 = time.time()
+              subprocess.run(['python', str(script)], check=True)
+              dur = time.time() - t0
+              ref = baseline.get(script.name, dur)
+              if dur > 1.05 * ref:
+                  print(f"{script.name} slower: {dur:.2f}s > {ref:.2f}s")
+                  sys.exit(1)
+          PY
+

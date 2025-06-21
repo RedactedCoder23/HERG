@@ -1,0 +1,11 @@
+__pycache__/
+.pytest_cache/
+*.pyc
+*.npz
+.venv/
+.DS_Store
+dist/
+build/
+coverage.xml
+.env
+.vscode/

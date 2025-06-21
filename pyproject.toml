@@ -4,9 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "herg"
-version = "0.1.0a0"
+version = "0.1.0"
 description = "HERG — Hypervector Encoder & Graph capsules"
-authors = [{name="HERG Team"}]
+authors = [{name="RedactedCoder23"}]
+license = {text = "MIT"}
 requires-python = ">=3.9"
 dependencies = [
     "numpy>=1.26",
@@ -24,7 +25,11 @@ dev = [
     "pytest",
     "pytest-cov",
     "httpx",
+    "black",
+    "flake8",
+    "mypy",
+    "pre-commit",
 ]
 
 [tool.setuptools.packages.find]
-exclude = ["tests*", "docs*", "scripts*"]
+exclude = ["tests*", "docs*", "scripts*", "bench*", "notebooks*", "papers*", "tools*"]

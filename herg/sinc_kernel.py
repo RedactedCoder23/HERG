@@ -35,28 +35,35 @@ def modulate(hv, digest: bytes, alpha=0.75):
     return hv * w_prod
 
 
-def sinc_kernel(x: np.ndarray,
-                alpha: Union[float, Sequence[float]],
-                mode: Literal['separable', 'radial'] = 'separable') -> np.ndarray:
-    """Generalized sinc kernel supporting per-axis scaling."""
+def sinc_kernel(
+    x: np.ndarray,
+    alpha: Union[float, Sequence[float]] = 1.0,
+    mode: Literal["separable", "radial"] = "separable",
+) -> np.ndarray:
+    """Generalized sinc kernel with optional separable or radial scaling."""
+
     xp = _get_xp(x)
     arr = xp.asarray(x, dtype=xp.float32)
 
     if isinstance(alpha, Sequence) and not isinstance(alpha, (bytes, bytearray, str)):
         alpha_vec = xp.asarray(list(alpha), dtype=xp.float32)
         if alpha_vec.size != arr.shape[-1]:
-            raise ValueError(f"alpha length {alpha_vec.size} does not match dimensions {arr.shape[-1]}")
+            raise ValueError(
+                f"alpha length {alpha_vec.size} does not match dimensions {arr.shape[-1]}"
+            )
     else:
         alpha_vec = xp.full(arr.shape[-1], float(alpha), dtype=xp.float32)
 
-    if mode == 'separable':
+    if mode == "separable":
         out = xp.ones(arr.shape[:-1], dtype=xp.float32)
         for i in range(arr.shape[-1]):
             out = out * xp.sinc(alpha_vec[i] * arr[..., i])
         return out[..., None] * xp.ones_like(arr)
-    elif mode == 'radial':
-        r = xp.linalg.norm(alpha_vec * arr, axis=-1)
-        return xp.sinc(r)[..., None] * xp.ones_like(arr)
+    elif mode == "radial":
+        alpha_scalar = float(alpha_vec.mean())
+        r = xp.linalg.norm(arr, axis=-1)
+        # radial kernel per PDF §4
+        return xp.sinc(alpha_scalar * r)[..., None] * xp.ones_like(arr)
     else:
         raise ValueError(f"unknown mode '{mode}'")
 

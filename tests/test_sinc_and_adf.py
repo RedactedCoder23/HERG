@@ -50,3 +50,12 @@ def test_sinc_kernel_radial_symmetry():
     out = sinc_kernel(pts, 1.0, mode='radial')
     assert np.allclose(out[0], out[1])
 
+
+def test_sinc_kernel_radial_alpha_mean():
+    x = np.array([[1.0, 0.5]], dtype=np.float32)
+    alpha = [2.0, 0.5]
+    out = sinc_kernel(x, alpha, mode='radial')
+    r = np.linalg.norm(x, axis=-1)
+    expected = np.sinc(np.mean(alpha) * r)[..., None] * np.ones_like(x)
+    assert np.allclose(out, expected)
+

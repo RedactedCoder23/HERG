@@ -1,8 +1,5 @@
-import os
 import pathlib
 import subprocess
-import tempfile
-import textwrap
 import sys
 
 import pytest
@@ -11,7 +8,7 @@ sys.path.append(
     str(pathlib.Path(__file__).resolve().parents[1] / '.github' / 'scripts')
 )
 
-import codex_todo_runner as ctr
+import codex_todo_runner as ctr  # noqa: E402
 
 
 def test_gather_todos_single_marker(tmp_path):

@@ -13,7 +13,13 @@ class MemoryCapsule:
     energy: float = 1.0
 
     def update(self, vec: np.ndarray, reward: float = 0.0) -> None:
-        self.mu = (1 - LR) * self.mu + LR * vec
+        """Apply ADF update with decay as in PDF eqn (5)."""
+        mu_old = self.mu.copy()
+        delta = LR * (vec - mu_old)
+        mu_lin = mu_old + delta
+        # DECAY per PDF eqn (5)
+        self.mu = DECAY * mu_old + (1 - DECAY) * mu_lin
+        # same DECAY factor for energy assimilation
         self.energy = self.energy * DECAY + 0.01 * reward
         self.meta["ts"] = time.time()
 

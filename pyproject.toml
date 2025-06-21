@@ -25,6 +25,10 @@ dev = [
     "pytest",
     "pytest-cov",
     "httpx",
+    "black",
+    "flake8",
+    "mypy",
+    "pre-commit",
 ]
 
 [tool.setuptools.packages.find]

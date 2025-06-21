@@ -25,7 +25,10 @@ if __name__ == "__main__":
         sys.stdout.buffer.write(add_prefix(data))
 
 import numpy as np
-import faiss
+try:
+    import faiss
+except ModuleNotFoundError:
+    faiss = None
 from herg.faiss_wrapper import HybridIndex
 
 
@@ -36,6 +39,8 @@ def safe_search(index, xb, k: int):
     if isinstance(index, HybridIndex):
         D, I = index.search(np.asarray(xb, np.uint8), k)
         return D.astype(np.float32), I
+    if faiss is None:
+        raise ImportError("faiss library not installed")
     D, I = index.search(np.asarray(xb, np.float32), k)
     return D.astype(np.float32), I
 

@@ -1,4 +1,7 @@
-import faiss
+try:
+    import faiss
+except ModuleNotFoundError:  # optional for simple demos
+    faiss = None
 import numpy as np
 import os
 from .distance import hybrid_hamming
@@ -34,8 +37,10 @@ class HybridIndex:
         return D, I
 
 
-def make_index(dim: int) -> faiss.Index:
-    """Return FAISS index; USE_FLAT=1 forces simple FlatL2."""
+def make_index(dim: int):
+    """Return FAISS index if available; else raise ImportError."""
+    if faiss is None:
+        raise ImportError("faiss library not installed")
     if os.getenv("USE_FLAT", "") == "1":
         return faiss.IndexFlatL2(dim)
     return faiss.IndexFlatL2(dim)

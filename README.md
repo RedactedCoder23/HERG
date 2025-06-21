@@ -2,6 +2,16 @@
 
 A lightweight, self-evolving hyper-vector reasoning graph.
 
+### Quick-start
+
+```bash
+git clone https://github.com/YourOrg/HERG.git
+cd HERG
+pip install -e .[dev]          # editable install
+herg-run --demo text
+```
+
+
 **How Codex/GPT fits in →** see [`HERG_CODEx_GUIDE.md`](HERG_CODEx_GUIDE.md).
 
 Experimental engine that fuses

@@ -18,3 +18,5 @@ v0.3.0-dev – hybrid lanes WIP
 * 2025-06-30 fix: finalize node learning flow & smoke health check
 * 2025-06-30 chore: patch review clean-up
 * 2025-06-30 fix: ensure safe_search used across routes
+* 2025-06-29 feat(pkg): installable pyproject, CLI, smoke CI
+* 2025-06-30 fix: simplify CLI + memory implementation

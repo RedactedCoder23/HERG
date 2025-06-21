@@ -47,12 +47,27 @@ class _Graph:
     def __init__(self):
         self.nodes = {}
         self.edges = []
+        self._next_id = 1
 
     def add(self, cap):
         self.nodes[cap.id_int] = cap
 
     def add_edge(self, src, dst, route=""):
         self.edges.append((src, dst, route))
+
+    def __getitem__(self, key):
+        return self.nodes[key]
+
+    def new_id(self) -> int:
+        self._next_id += 1
+        return self._next_id
+
+    def get_or_create(self, key, cls):
+        cap = self.nodes.get(key)
+        if cap is None:
+            cap = cls() if callable(cls) else cls
+            self.nodes[key] = cap
+        return cap
 
 
 self_cap = SelfCapsule()
@@ -118,14 +133,16 @@ async def query(request: Request):
         raise HTTPException(400, "wrong shard")
     data = orjson.loads(body[2:])
     vec, _ = encode(data["seed"])
-    D, I = safe_search(index, vec.astype(np.float32)[None, :], data.get("top_k", 8))
+    xb = np.asarray([vec], np.float32)
+    D, I = safe_search(index, xb, data.get("top_k", 8))
     if I.size == 0:
         return []
     results = []
     for dist, cid in zip(D[0], I[0]):
         if cid == -1:
             continue
-        chunk, meta, _ = id_map.get(cid, (None, None, None))
+        cap = graph.nodes.get(cid)
+        meta = cap.meta if cap else {}
         results.append({"capsule": int(cid), "dist": float(dist), "meta": meta})
     return results
 
@@ -143,36 +160,24 @@ async def insert(request: Request):
         raise HTTPException(400, "wrong shard")
     data = orjson.loads(body[2:])
     reward = float(data.get("reward", 0.0))
-    vec, h = encode(data["seed"])
+    text = data.get("text", "")
+    vec, _ = encode(data["seed"])
 
-    # look up nearest capsule
-    D, I = safe_search(index, vec.astype(np.float32)[None, :], 1)
-    cap = None
-    if I.size and I[0][0] != -1:
-        cid = int(I[0][0])
-        chunk, meta, mu = id_map[cid]
-        cap = MemoryCapsule(cid, mu.copy(), meta, meta.get("energy", 1.0))
-        if cosine(vec, cap.mu) > SIM_THR:
-            cap.update(vec, reward)
-            hvlog.append_cap(prefix=pref, cap_id=cid, mu=cap.mu, meta=cap.meta)
-            index.remove_ids(np.array([cid], dtype=np.int64))
-            index.add_with_ids(cap.mu.astype(np.float32)[None, :], np.array([cid], dtype=np.int64))
-            id_map[cid] = ("current_chunk", cap.meta, cap.mu.copy())
-        else:
-            cap = None
+    xb = np.asarray([vec], np.float32)
+    D, I = safe_search(index, xb, 1)
+    if I.size and D[0][0] > SIM_THR:
+        cap = graph[I[0][0]]
+        cap.update(vec, reward)
+    else:
+        cap = MemoryCapsule(graph.new_id(), vec.copy(), {"text": text})
+        graph.add(cap)
+        hvlog.append_cap(SHARD_KEY, cap.id_int, cap.mu, cap.meta)
+        index.add_with_ids(xb, np.array([cap.id_int], np.int64))
 
-    if cap is None:
-        cap_id = h
-        meta = {"text": data.get("text", ""), "energy": reward, "ts": time.time()}
-        hvlog.append_cap(prefix=pref, cap_id=cap_id, mu=vec, meta=meta)
-        index.add_with_ids(vec.astype(np.float32)[None, :], np.array([cap_id], dtype=np.int64))
-        id_map[int(cap_id)] = ("current_chunk", meta, vec.astype(np.float32))
-        cap = MemoryCapsule(cap_id, vec.copy(), meta)
-
-    maybe_branch(graph, cap, vec, reward)
-    self_cap.bump(reward, 0.0)
-    log.info("Δ|μ| %.3f", float(np.linalg.norm(cap.mu - vec)))
-    hvlog.append_cap(prefix=SHARD_KEY, cap_id=0, mu=self_cap.mu, meta={
+    child = maybe_branch(graph, cap, vec, reward)
+    self_cap = graph.get_or_create("SELF", SelfCapsule)
+    self_cap.bump(reward)
+    hvlog.append_cap(SHARD_KEY, 0, self_cap.mu, {
         "step": self_cap.step,
         "mean_reward": self_cap.mean_reward,
         "entropy": self_cap.entropy,
